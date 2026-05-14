@@ -94,4 +94,52 @@ public sealed class DailyUpdatesController(
         var rows = scopedUsers.Select(x => new { x.UserId, x.Name, Submitted = submittedUserIds.Contains(x.UserId) });
         return Ok(rows);
     }
+
+    // P11: Range heatmap — returns per-user per-day submission matrix for calendar UI
+    [HttpGet("compliance-heatmap/range")]
+    [Authorize(Roles = "Manager,Admin")]
+    public ActionResult<object> ComplianceHeatmapRange(
+        [FromQuery] DateOnly startDate,
+        [FromQuery] DateOnly endDate)
+    {
+        if (endDate < startDate) return BadRequest("endDate must be >= startDate.");
+        if (endDate.DayNumber - startDate.DayNumber > 90) return BadRequest("Range cannot exceed 90 days.");
+
+        var userId = User.CurrentUserId();
+        var role = User.CurrentRole();
+        var visible = visibility.TeamViewableUserIds(userId);
+
+        var users = db.Users
+            .Where(x => x.IsActive && (role == AppRole.Admin || visible.Contains(x.UserId)))
+            .Select(x => new { x.UserId, x.Name })
+            .OrderBy(x => x.Name)
+            .ToList();
+
+        var submissions = db.DailyUpdates
+            .Where(x => x.WorkDate >= startDate && x.WorkDate <= endDate
+                        && users.Select(u => u.UserId).Contains(x.UserId))
+            .Select(x => new { x.UserId, x.WorkDate, x.Status })
+            .ToList();
+
+        // Build date list (weekdays only for display, but include all for accuracy)
+        var dates = new List<DateOnly>();
+        for (var d = startDate; d <= endDate; d = d.AddDays(1))
+            dates.Add(d);
+
+        var rows = users.Select(u =>
+        {
+            var userSubs = submissions.Where(s => s.UserId == u.UserId).ToList();
+            var days = dates.Select(d => new
+            {
+                date = d.ToString("yyyy-MM-dd"),
+                isWeekend = d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday,
+                submitted = userSubs.Any(s => s.WorkDate == d),
+                status = userSubs.FirstOrDefault(s => s.WorkDate == d)?.Status.ToString()
+            }).ToList();
+
+            return new { u.UserId, u.Name, days };
+        });
+
+        return Ok(new { dates = dates.Select(d => d.ToString("yyyy-MM-dd")), users = rows });
+    }
 }
