@@ -1022,4 +1022,56 @@
 
   paint();
   loadNudgeCounts();
+
+  // ── P20: Register service worker ─────────────────────────────────────────
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" })
+      .then((reg) => {
+        // Check for updates every time the app is opened
+        reg.update();
+        reg.addEventListener("updatefound", () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener("statechange", () => {
+            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+              // New version available — show a subtle toast
+              const toast = document.createElement("div");
+              toast.style.cssText =
+                "position:fixed;bottom:80px;left:50%;transform:translateX(-50%);" +
+                "background:#17324a;color:#fff;padding:10px 18px;border-radius:8px;" +
+                "font-size:13px;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,.2)";
+              toast.innerHTML =
+                'Update available. <button onclick="location.reload()" ' +
+                'style="background:#1e6ea7;border:none;color:#fff;border-radius:6px;' +
+                'padding:4px 10px;margin-left:8px;cursor:pointer;font:inherit">Refresh</button>';
+              document.body.appendChild(toast);
+              setTimeout(() => toast.remove(), 12000);
+            }
+          });
+        });
+      })
+      .catch((err) => console.warn("SW registration failed:", err));
+
+    // Notify user when they go offline / come back online
+    window.addEventListener("offline", () => {
+      showConnectionBanner("You are offline — changes will sync when reconnected.", "#ea580c");
+    });
+    window.addEventListener("online", () => {
+      showConnectionBanner("Back online.", "#16a34a");
+      loadNudgeCounts();
+    });
+  }
 })();
+
+function showConnectionBanner(msg, color) {
+  const existing = document.getElementById("connBanner");
+  if (existing) existing.remove();
+  const banner = document.createElement("div");
+  banner.id = "connBanner";
+  banner.style.cssText =
+    `position:fixed;top:0;left:0;right:0;background:${color};color:#fff;` +
+    "text-align:center;padding:8px;font-size:13px;font-weight:600;z-index:999;";
+  banner.textContent = msg;
+  document.body.prepend(banner);
+  setTimeout(() => banner.remove(), 5000);
+}

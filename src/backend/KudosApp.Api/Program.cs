@@ -127,4 +127,8 @@ using (var scope = app.Services.CreateScope())
     seeder.Seed();
 }
 
+// P20: Generate PNG icons from the SVG if they don't already exist
+PwaIconGenerator.EnsureIcons(
+    Path.Combine(app.Environment.WebRootPath ?? "wwwroot"));
+
 app.Run();
