@@ -109,6 +109,11 @@
     });
   }
 
+  function navigate(view) {
+    state.view = view;
+    paintView();
+  }
+
   function showCardError(message) {
     return `<div class="error">${escapeHtml(message)}</div>`;
   }
@@ -125,28 +130,51 @@
   async function renderDashboard() {
     try {
       const [dashboard, profile] = await Promise.all([api("/dashboard"), api("/performance/my")]);
+      const monthName = new Date().toLocaleString("en-IN", { month: "long", year: "numeric" });
+      const submitted = dashboard.hasTodayUpdate;
+      const hasTasks  = dashboard.pendingTasks > 0;
+
+      const badgeChips = (profile.badges || []).length
+        ? (profile.badges).map(b => `<span class="chip blue">${escapeHtml(b)}</span>`).join("")
+        : `<span class="muted small">No badges yet — keep contributing!</span>`;
+
       content.innerHTML = `
-        <div class="grid">
-          <section class="card">
-            <h3>Pending Tasks</h3>
-            <div class="pill">${dashboard.pendingTasks}</div>
-            <p class="muted">Tasks waiting for your vote or response.</p>
-          </section>
-          <section class="card">
-            <h3>Daily Update</h3>
-            <div class="pill">${dashboard.hasTodayUpdate ? "Submitted" : "Pending"}</div>
-            <p class="muted">Mandatory for all users every day.</p>
-          </section>
-          <section class="card">
-            <h3>Points</h3>
-            <div class="pill">${dashboard.currentMonthPoints}</div>
-            <p class="muted">Rank: ${dashboard.rank || "N/A"}</p>
-          </section>
-          <section class="card">
-            <h3>Badges</h3>
-            <p>${(profile.badges || []).join(", ") || "No badges yet"}</p>
-          </section>
+        <div class="stack">
+          <div class="stat-grid">
+
+            <div class="stat-card ${submitted ? "green" : "red"}">
+              <div class="stat-value">${submitted ? "✓" : "!"}</div>
+              <div class="stat-label">Daily update</div>
+              <div class="stat-sub">${submitted ? "Submitted today" : "Not yet submitted"}</div>
+              ${!submitted ? `<button class="stat-action" data-nav="daily">Submit now</button>` : ""}
+            </div>
+
+            <div class="stat-card ${hasTasks ? "orange" : "blue"}">
+              <div class="stat-value">${dashboard.pendingTasks}</div>
+              <div class="stat-label">Pending tasks</div>
+              <div class="stat-sub">${hasTasks ? "Waiting for your response" : "All caught up"}</div>
+              ${hasTasks ? `<button class="stat-action" data-nav="tasks">View tasks</button>` : ""}
+            </div>
+
+            <div class="stat-card blue">
+              <div class="stat-value">${profile.points ?? dashboard.currentMonthPoints}</div>
+              <div class="stat-label">Points</div>
+              <div class="stat-sub">${monthName} · Rank ${dashboard.rank || "N/A"}</div>
+            </div>
+
+          </div>
+
+          <div class="card">
+            <div class="section-title">My Badges</div>
+            <div class="chip-list" style="margin-top:8px">${badgeChips}</div>
+          </div>
+
         </div>`;
+
+      content.querySelectorAll("button[data-nav]").forEach(btn => {
+        btn.addEventListener("click", () => navigate(btn.dataset.nav));
+      });
+
     } catch (error) {
       content.innerHTML = showCardError(error.message);
     }
@@ -301,30 +329,65 @@
     }
   }
 
+  const FEED_ICONS = {
+    Achievement: "🏆", Event: "🎉", DailyUpdate: "📋",
+    SalesEnquiry: "💼", Meeting: "🤝", Task: "✅"
+  };
+
   function feedCard(item) {
-    return `<section class="card">
-      <span class="pill">${escapeHtml(item.kind)}</span>
-      <h3>${escapeHtml(item.title)}</h3>
-      <p>${escapeHtml(item.description || "")}</p>
+    const icon = FEED_ICONS[item.kind] || "📌";
+    const when = item.createdAtUtc
+      ? new Date(item.createdAtUtc).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      : "";
+    return `<section class="card feed-card">
+      <div class="between" style="align-items:flex-start">
+        <div style="display:flex;gap:8px;align-items:flex-start;flex:1">
+          <span class="feed-icon">${icon}</span>
+          <div style="flex:1">
+            <div class="between">
+              <strong>${escapeHtml(item.title)}</strong>
+              <span class="pill feed-kind">${escapeHtml(item.kind)}</span>
+            </div>
+            ${item.description ? `<p style="margin:4px 0 0">${escapeHtml(item.description)}</p>` : ""}
+            <div class="feed-meta">
+              ${item.author ? `<span>${escapeHtml(item.author)}</span>` : ""}
+              ${when ? `<span>${when}</span>` : ""}
+            </div>
+          </div>
+        </div>
+      </div>
     </section>`;
   }
 
   async function renderLeaderboard() {
     const now = new Date();
+    const year  = now.getUTCFullYear();
+    const month = now.getUTCMonth() + 1;
+    const monthLabel = now.toLocaleString("en-IN", { month: "long", year: "numeric" });
+    const myId = state.user?.userId;
+    const MEDALS = ["🥇", "🥈", "🥉"];
     try {
-      const rows = await api(`/performance/leaderboard?year=${now.getUTCFullYear()}&month=${now.getUTCMonth() + 1}`);
-      content.innerHTML = `<div class="stack">
-        ${rows
-          .map(
-            (row, index) => `
-              <section class="card between">
-                <strong>#${index + 1}</strong>
-                <span>${escapeHtml(row.name)}</span>
-                <span>${row.points} pts</span>
-              </section>`
-          )
-          .join("")}
-      </div>`;
+      const rows = await api(`/performance/leaderboard?year=${year}&month=${month}`);
+      if (!rows.length) {
+        content.innerHTML = `<div class="card"><p class="muted">No entries yet for ${monthLabel}.</p></div>`;
+        return;
+      }
+      content.innerHTML = `
+        <div class="stack">
+          <div class="section-title" style="text-align:center">${monthLabel} Leaderboard</div>
+          ${rows.map((row, i) => {
+            const isMe = row.userId === myId || row.name === state.user?.name;
+            const medal = i < 3 ? `<span style="font-size:20px">${MEDALS[i]}</span>` : `<span class="rank-num">#${i + 1}</span>`;
+            return `<div class="card between lb-row${isMe ? " lb-me" : ""}">
+              ${medal}
+              <span class="lb-name">${escapeHtml(row.name)}</span>
+              <div class="lb-right">
+                <span class="lb-pts">${row.points}</span>
+                <span class="small muted">pts</span>
+              </div>
+            </div>`;
+          }).join("")}
+        </div>`;
     } catch (error) {
       content.innerHTML = showCardError(error.message);
     }
@@ -332,29 +395,43 @@
 
   async function renderValidation() {
     try {
-      const rows = await api("/validations/pending");
+      const rows = await api("/validations/pending-detail");
       if (!rows.length) {
-        content.innerHTML = `<section class="card"><p>No pending validations.</p></section>`;
+        content.innerHTML = `
+          <div class="card" style="text-align:center;padding:24px">
+            <div style="font-size:32px">✅</div>
+            <p class="muted" style="margin:8px 0 0">No pending validations — queue is clear!</p>
+          </div>`;
         return;
       }
 
-      content.innerHTML = rows
-        .map(
-          (row) => `
+      const TYPE_ICON = { Achievement: "🏆", SalesEnquiry: "💼" };
+      content.innerHTML = `
+        <div class="stack">
+          <div class="section-title">${rows.length} pending validation${rows.length !== 1 ? "s" : ""}</div>
+          ${rows.map(row => `
             <section class="card stack" data-validation-card="${row.validationRecordId}">
               <div class="between">
-                <strong>${escapeHtml(row.entityType)}</strong>
-                <span class="small muted">Entity ${row.entityId}</span>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <span style="font-size:20px">${TYPE_ICON[row.entityType] || "📌"}</span>
+                  <div>
+                    <strong>${escapeHtml(row.title)}</strong>
+                    <div class="small muted">${escapeHtml(row.category)}${row.userName ? ` · ${escapeHtml(row.userName)}` : ""}</div>
+                  </div>
+                </div>
+                <span class="chip" style="font-size:11px">${escapeHtml(row.entityType)}</span>
               </div>
-              <label>Remarks<textarea data-field="remarks" placeholder="Optional remarks"></textarea></label>
+              ${row.description ? `<div class="small" style="color:#334e68">${escapeHtml(row.description)}</div>` : ""}
+              ${row.proofUrl ? `<a href="${escapeHtml(row.proofUrl)}" target="_blank" rel="noopener" class="small" style="color:#1e6ea7">View proof ↗</a>` : ""}
+              <div class="small muted">Submitted ${new Date(row.createdAtUtc).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</div>
+              <label>Remarks<textarea data-field="remarks" placeholder="Optional remarks" rows="2"></textarea></label>
               <div class="row">
-                <button data-action="validate" data-id="${row.validationRecordId}" data-status="Approved">Approve</button>
-                <button class="secondary" data-action="validate" data-id="${row.validationRecordId}" data-status="Rejected">Reject</button>
+                <button data-action="validate" data-id="${row.validationRecordId}" data-status="Approved">✓ Approve</button>
+                <button class="secondary" data-action="validate" data-id="${row.validationRecordId}" data-status="Rejected">✗ Reject</button>
               </div>
               <div data-field="validation-msg"></div>
-            </section>`
-        )
-        .join("");
+            </section>`).join("")}
+        </div>`;
     } catch (error) {
       content.innerHTML = showCardError(error.message);
     }
@@ -1084,14 +1161,73 @@
   }
 
   async function renderProfile() {
-    const profile = state.user;
-    content.innerHTML = `
-      <section class="card stack">
-        <h3>${escapeHtml(profile?.name || "")}</h3>
-        <div>Email: ${escapeHtml(profile?.email || "")}</div>
-        <div>Role: ${escapeHtml(profile?.role || "")}</div>
-        <div>Team: ${escapeHtml(String(profile?.teamId || ""))}</div>
-      </section>`;
+    const u = state.user || {};
+    const initial = (u.name || "?")[0].toUpperCase();
+    content.innerHTML = `<div class="card" style="text-align:center;padding:24px;color:#51697f">Loading profile…</div>`;
+    try {
+      const [perf, myAch] = await Promise.all([
+        api("/performance/my"),
+        api("/achievements/feed?pageSize=5")
+      ]);
+      const monthLabel = new Date().toLocaleString("en-IN", { month: "long", year: "numeric" });
+      const ROLE_COLOR = { Admin: "red", Manager: "blue", Hr: "orange", Employee: "green" };
+      const roleColor = ROLE_COLOR[u.role] || "blue";
+
+      const badgeChips = (perf.badges || []).length
+        ? perf.badges.map(b => `<span class="chip blue">${escapeHtml(b)}</span>`).join("")
+        : `<span class="muted small">No badges yet</span>`;
+
+      const myItems = myAch.filter(a => a.userName === u.name || a.userId === u.userId);
+      const achHtml = myItems.length
+        ? myItems.map(a => `
+          <div class="between" style="font-size:13px">
+            <span>${escapeHtml(a.title)}</span>
+            <span class="chip ${a.validationStatus === "Approved" ? "green" : a.validationStatus === "Rejected" ? "red" : ""}" style="font-size:11px">${escapeHtml(a.validationStatus)}</span>
+          </div>`).join("")
+        : `<p class="muted small">No achievements submitted yet.</p>`;
+
+      content.innerHTML = `
+        <div class="stack">
+          <div class="card" style="text-align:center">
+            <div class="avatar-circle">${escapeHtml(initial)}</div>
+            <h2 style="margin:12px 0 4px">${escapeHtml(u.name || "")}</h2>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px">
+              <span class="chip ${roleColor}">${escapeHtml(u.role || "")}</span>
+              <span class="chip" style="background:#edf3f8;color:#334e68">${escapeHtml(u.email || "")}</span>
+            </div>
+          </div>
+
+          <div class="stat-grid" style="grid-template-columns:repeat(2,1fr)">
+            <div class="stat-card blue">
+              <div class="stat-value">${perf.points ?? 0}</div>
+              <div class="stat-label">Points</div>
+              <div class="stat-sub">${monthLabel}</div>
+            </div>
+            <div class="stat-card green">
+              <div class="stat-value">${(perf.badges || []).length}</div>
+              <div class="stat-label">Badges</div>
+              <div class="stat-sub">All time</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-title">Badges</div>
+            <div class="chip-list" style="margin-top:8px">${badgeChips}</div>
+          </div>
+
+          <div class="card">
+            <div class="section-title">Recent Achievements</div>
+            <div class="stack" style="gap:8px;margin-top:8px">${achHtml}</div>
+            <button class="secondary" style="margin-top:12px;width:100%" data-nav="achievements">View all achievements</button>
+          </div>
+        </div>`;
+
+      content.querySelectorAll("button[data-nav]").forEach(btn => {
+        btn.addEventListener("click", () => navigate(btn.dataset.nav));
+      });
+    } catch (err) {
+      content.innerHTML = showCardError(err.message);
+    }
   }
 
   async function paintView() {
