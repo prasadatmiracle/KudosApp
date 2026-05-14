@@ -150,32 +150,27 @@ public sealed class ReportService(AppDbContext db) : IReportService
 
     public ExportArtifact Export(ReportRecord report, string format)
     {
-        var extension = format.Equals("excel", StringComparison.OrdinalIgnoreCase) ? "csv" : "txt";
-        var contentType = extension == "csv" ? "text/csv" : "text/plain";
-        var fileName = $"{report.ReportType}-{report.StartDate:yyyyMMdd}-{report.EndDate:yyyyMMdd}.{extension}";
+        // xlsx / excel → real spreadsheet via ClosedXML
+        if (format.Equals("xlsx", StringComparison.OrdinalIgnoreCase)
+            || format.Equals("excel", StringComparison.OrdinalIgnoreCase))
+        {
+            return XlsxExportService.Export(report);
+        }
 
-        string content;
-        if (extension == "csv")
-        {
-            content = $"report_id,report_type,status,start_date,end_date{Environment.NewLine}"
-                    + $"{report.ReportRecordId},{report.ReportType},{report.Status},{report.StartDate:yyyy-MM-dd},{report.EndDate:yyyy-MM-dd}";
-        }
-        else
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine($"Kudos Report: {report.ReportType}");
-            sb.AppendLine($"Window: {report.StartDate:yyyy-MM-dd} to {report.EndDate:yyyy-MM-dd}");
-            sb.AppendLine($"Status: {report.Status}");
-            sb.AppendLine();
-            sb.AppendLine(report.PayloadJson);
-            content = sb.ToString();
-        }
+        // txt fallback (kept for debugging / API consumers that want raw JSON)
+        var fileName = $"{report.ReportType}-{report.StartDate:yyyyMMdd}-{report.EndDate:yyyyMMdd}.txt";
+        var sb = new StringBuilder();
+        sb.AppendLine($"KudosApp Report: {report.ReportType}");
+        sb.AppendLine($"Period : {report.StartDate:yyyy-MM-dd} to {report.EndDate:yyyy-MM-dd}");
+        sb.AppendLine($"Status : {report.Status}");
+        sb.AppendLine();
+        sb.AppendLine(report.PayloadJson);
 
         return new ExportArtifact
         {
-            FileName = fileName,
-            ContentType = contentType,
-            Base64Content = Convert.ToBase64String(Encoding.UTF8.GetBytes(content))
+            FileName      = fileName,
+            ContentType   = "text/plain",
+            Base64Content = Convert.ToBase64String(Encoding.UTF8.GetBytes(sb.ToString()))
         };
     }
 
