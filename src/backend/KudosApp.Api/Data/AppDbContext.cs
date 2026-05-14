@@ -28,6 +28,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<ReminderDispatch> ReminderDispatches => Set<ReminderDispatch>();
     public DbSet<ActionItem> ActionItems => Set<ActionItem>();
+    public DbSet<InboxTask> InboxTasks => Set<InboxTask>();
+    public DbSet<InboxTaskDependency> InboxTaskDependencies => Set<InboxTaskDependency>();
+    public DbSet<InboxTaskReminder> InboxTaskReminders => Set<InboxTaskReminder>();
 
     protected override void OnModelCreating(ModelBuilder m)
     {
@@ -291,6 +294,45 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
              .OnDelete(DeleteBehavior.NoAction);
             e.HasOne<UserProfile>().WithMany().HasForeignKey(x => x.CreatedByUserId)
              .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ── InboxTasks ─────────────────────────────────────────────────────────
+        m.Entity<InboxTask>(e =>
+        {
+            e.ToTable("InboxTasks");
+            e.HasKey(x => x.InboxTaskId);
+            e.Property(x => x.SourceChannel).HasMaxLength(20).IsRequired();
+            e.Property(x => x.SourceSender).HasMaxLength(200).IsRequired();
+            e.Property(x => x.SourceMessageId).HasMaxLength(500).IsRequired();
+            e.Property(x => x.SourcePreview).HasMaxLength(1000).IsRequired();
+            e.Property(x => x.ExtractedTaskText).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.DeduplicationHash).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Category).HasConversion<string>().HasMaxLength(50).IsRequired();
+            e.Property(x => x.CustomCategoryName).HasMaxLength(100);
+            e.Property(x => x.Priority).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.State).HasConversion<string>().HasMaxLength(30).IsRequired();
+            e.Property(x => x.WeeklyReportCategory).HasConversion<string>().HasMaxLength(30);
+            e.HasIndex(x => x.DeduplicationHash);
+            e.HasIndex(x => new { x.UserId, x.State });
+            e.HasOne<UserProfile>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<InboxTaskDependency>(e =>
+        {
+            e.ToTable("InboxTaskDependencies");
+            e.HasKey(x => x.InboxTaskDependencyId);
+            e.HasIndex(x => x.InboxTaskId);
+            e.HasOne<InboxTask>().WithMany().HasForeignKey(x => x.InboxTaskId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<UserProfile>().WithMany().HasForeignKey(x => x.DependentUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<InboxTaskReminder>(e =>
+        {
+            e.ToTable("InboxTaskReminders");
+            e.HasKey(x => x.InboxTaskReminderId);
+            e.Property(x => x.Channel).HasMaxLength(20).IsRequired();
+            e.HasIndex(x => new { x.InboxTaskId, x.IsSent });
+            e.HasOne<InboxTask>().WithMany().HasForeignKey(x => x.InboxTaskId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -377,6 +377,7 @@
       <div class="small muted">${row.startDate} to ${row.endDate}</div>
       <div class="row">
         <button class="secondary" data-action="export-report" data-id="${row.reportRecordId}" title="Download as Excel (.xlsx)">Export XLSX</button>
+        <button class="secondary" data-action="view-narrative" data-id="${row.reportRecordId}" title="AI summary of this report">Narrative</button>
         ${
           row.reportType === "Monthly"
             ? `<button class="secondary" data-action="export-pptx" data-id="${row.reportRecordId}" title="Download as PowerPoint (.pptx)">Export PPTX</button>`
@@ -389,6 +390,92 @@
         }
       </div>
     </section>`;
+  }
+
+  // ── P9B: Smart Inbox ─────────────────────────────────────────────────────
+
+  async function loadInboxCounts() {
+    try {
+      const [pending, active] = await Promise.all([
+        api("/inbox-tasks/pending"),
+        api("/inbox-tasks")
+      ]);
+      const total = (pending?.length || 0) + (active?.length || 0);
+      const badge = document.getElementById("inboxBadge");
+      if (badge) {
+        badge.textContent = total;
+        badge.classList.toggle("hidden", total === 0);
+      }
+    } catch (_) {}
+  }
+
+  async function renderInbox() {
+    content.innerHTML = `<div class="card" style="text-align:center;padding:24px">Loading inbox…</div>`;
+    try {
+      const [pending, active, completed] = await Promise.all([
+        api("/inbox-tasks/pending"),
+        api("/inbox-tasks"),
+        api("/inbox-tasks/completed")
+      ]);
+
+      const total = pending.length + active.length;
+      const badge = document.getElementById("inboxBadge");
+      if (badge) { badge.textContent = total; badge.classList.toggle("hidden", total === 0); }
+
+      content.innerHTML = `<div class="stack">
+
+        ${pending.length > 0 ? `
+        <div class="section-title">Needs Confirmation (${pending.length})</div>
+        ${pending.map(t => inboxCard(t, "pending")).join("")}` : ""}
+
+        <div class="section-title">Active Tasks (${active.length})</div>
+        ${active.length === 0
+          ? `<div class="card" style="color:#51697f;text-align:center;padding:16px">No active inbox tasks</div>`
+          : active.map(t => inboxCard(t, "active")).join("")}
+
+        ${completed.length > 0 ? `
+        <div class="section-title">Completed (last 30 days)</div>
+        ${completed.slice(0, 5).map(t => inboxCard(t, "done")).join("")}` : ""}
+
+      </div>`;
+    } catch (err) {
+      content.innerHTML = showCardError(err.message);
+    }
+  }
+
+  function inboxCard(t, mode) {
+    const priorityColor = { Low: "gray", Medium: "blue", High: "orange", Critical: "red" };
+    const stateColor    = { Active: "blue", InProgress: "orange", Completed: "green",
+                             PendingConfirmation: "gray", Dismissed: "gray" };
+    const pColor = priorityColor[t.priority] || "gray";
+    const sColor = stateColor[t.state] || "gray";
+    const due = t.dueAtUtc ? `<span class="small muted">Due ${new Date(t.dueAtUtc).toLocaleDateString("en-IN")}</span>` : "";
+
+    const actions = mode === "pending" ? `
+      <div class="row" style="margin-top:8px">
+        <button data-action="inbox-confirm" data-id="${t.inboxTaskId}">Confirm</button>
+        <button class="secondary" data-action="inbox-dismiss" data-id="${t.inboxTaskId}">Dismiss</button>
+      </div>` : mode === "active" ? `
+      <div class="row" style="margin-top:8px">
+        ${t.state === "Active"
+          ? `<button class="secondary" data-action="inbox-start" data-id="${t.inboxTaskId}">Start</button>`
+          : ""}
+        <button data-action="inbox-complete" data-id="${t.inboxTaskId}">Mark Done</button>
+      </div>` : "";
+
+    return `<div class="card stack" style="gap:6px">
+      <div class="between">
+        <span class="chip ${pColor}">${escapeHtml(t.priority)}</span>
+        <span class="chip ${sColor}">${escapeHtml(t.state)}</span>
+      </div>
+      <div style="font-size:14px;font-weight:600;color:#143049">${escapeHtml(t.extractedTaskText)}</div>
+      <div class="row">
+        <span class="small muted">${escapeHtml(t.sourceChannel)} · ${escapeHtml(t.sourceSender)}</span>
+        ${due}
+        ${t.category !== "FollowUp" ? `<span class="pill">${escapeHtml(t.category)}</span>` : ""}
+      </div>
+      ${actions}
+    </div>`;
   }
 
   // ── P10: Team Health Dashboard ───────────────────────────────────────────
@@ -771,6 +858,7 @@
       dashboard: "Dashboard",
       health:    "Team Health",
       heatmap:   "Compliance Heatmap",
+      inbox:     "Smart Inbox",
       tasks:     "Tasks",
       daily:     "Daily Update",
       feed:      "Feed",
@@ -786,6 +874,8 @@
         return renderHealthDashboard();
       case "heatmap":
         return renderHeatmap();
+      case "inbox":
+        return renderInbox();
       case "tasks":
         return renderTasks();
       case "daily":
@@ -829,6 +919,7 @@
       state.view = "dashboard";
       paint();
       loadNudgeCounts();
+      loadInboxCounts();
     } catch (error) {
       setLoginError(error.message);
     }
@@ -934,6 +1025,47 @@
       const id = Number(event.target.dataset.id);
       await handleExport(id, "pptx");
     }
+    if (action === "view-narrative") {
+      const id = Number(event.target.dataset.id);
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = "Loading…";
+      try {
+        const data = await api(`/reports/${id}/narrative`);
+        showNarrativeModal(data);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Narrative";
+      }
+    }
+    // ── P9B: Inbox actions ──────────────────────────────────────────────────
+    if (action === "inbox-confirm") {
+      const id = Number(event.target.dataset.id);
+      await api(`/inbox-tasks/${id}/confirm`, {
+        method: "POST",
+        body: { category: "FollowUp", priority: "Medium", dueAtUtc: null }
+      });
+      await renderInbox();
+    }
+    if (action === "inbox-dismiss") {
+      const id = Number(event.target.dataset.id);
+      await api(`/inbox-tasks/${id}/dismiss`, { method: "POST" });
+      await renderInbox();
+    }
+    if (action === "inbox-start") {
+      const id = Number(event.target.dataset.id);
+      await api(`/inbox-tasks/${id}/state`, { method: "PUT", body: { state: "InProgress" } });
+      await renderInbox();
+    }
+    if (action === "inbox-complete") {
+      const id = Number(event.target.dataset.id);
+      await api(`/inbox-tasks/${id}/complete`, {
+        method: "POST",
+        body: { includeInWeeklyReport: false, weeklyReportCategory: null }
+      });
+      await renderInbox();
+      loadInboxCounts();
+    }
   });
 
   async function handleGenerateWeekly() {
@@ -1016,12 +1148,42 @@
     }
   }
 
+  function showNarrativeModal(data) {
+    const existing = document.getElementById("narrativeModal");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "narrativeModal";
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem";
+
+    const box = document.createElement("div");
+    box.style.cssText = "background:#fff;border-radius:12px;padding:1.5rem;max-width:640px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.3)";
+
+    const ts = new Date(data.generatedAt).toLocaleString();
+    box.innerHTML = `
+      <h3 style="margin:0 0 .75rem">Report Narrative</h3>
+      <p style="line-height:1.6;margin:0 0 1rem">${escHtml(data.narrative)}</p>
+      <div class="small muted" style="margin-bottom:1rem">Generated ${ts}${data.isAiGenerated ? " · AI-generated" : " · Rule-based"}</div>
+      <button id="narrativeClose" class="primary">Close</button>`;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    document.getElementById("narrativeClose").onclick = () => overlay.remove();
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
   function toIso(date) {
     return date.toISOString().slice(0, 10);
   }
 
   paint();
   loadNudgeCounts();
+  loadInboxCounts();
 
   // ── P20: Register service worker ─────────────────────────────────────────
   if ("serviceWorker" in navigator) {
