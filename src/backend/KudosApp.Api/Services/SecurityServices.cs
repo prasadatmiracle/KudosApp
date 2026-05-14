@@ -89,6 +89,13 @@ public sealed class UserContext(IHttpContextAccessor accessor) : IUserContext
     }
 }
 
+public sealed class MailAttachment
+{
+    public string FileName { get; init; } = string.Empty;
+    public string ContentType { get; init; } = "text/plain";
+    public byte[] Data { get; init; } = [];
+}
+
 public interface IZohoBridge
 {
     Task<bool> ValidateSsoAsync(string accessToken, string email, CancellationToken ct = default);
@@ -98,6 +105,18 @@ public interface IZohoBridge
     /// depending on what is configured in ZohoOptions. Failures are logged, never thrown.
     /// </summary>
     Task SendCliqNotificationAsync(string message, IReadOnlyCollection<string> emails, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends an email via Zoho Mail API. Falls back silently if Mail is not configured.
+    /// </summary>
+    Task SendMailAsync(string subject, string htmlBody, IReadOnlyCollection<string> toAddresses,
+        IReadOnlyCollection<MailAttachment>? attachments = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Uploads a file to Zoho WorkDrive and returns the public file URL.
+    /// Returns null if WorkDrive is not configured.
+    /// </summary>
+    Task<string?> UploadToWorkDriveAsync(string fileName, string contentType, Stream data, CancellationToken ct = default);
 
     Task<(string summary, string actionItems)> IngestMeetingTranscriptAsync(string transcriptText, CancellationToken ct = default);
 }
@@ -140,6 +159,151 @@ public sealed class ZohoBridge(
         }
 
         await Task.WhenAll(tasks);
+    }
+
+    // ── P7: Zoho Mail ────────────────────────────────────────────────────────
+
+    public async Task SendMailAsync(string subject, string htmlBody,
+        IReadOnlyCollection<string> toAddresses,
+        IReadOnlyCollection<MailAttachment>? attachments = null,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(Zoho.MailAccountId)
+            || string.IsNullOrWhiteSpace(Zoho.MailRefreshToken))
+        {
+            logger.LogWarning("Zoho Mail not configured — email not sent: {Subject}", subject);
+            return;
+        }
+
+        try
+        {
+            var accessToken = await GetMailAccessTokenAsync(ct);
+            if (accessToken is null) return;
+
+            var client = httpClientFactory.CreateClient("ZohoCliq");
+            var url = $"{Zoho.MailApiBaseUrl.TrimEnd('/')}/accounts/{Zoho.MailAccountId}/messages";
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Zoho-oauthtoken", accessToken);
+
+            var body = new
+            {
+                fromAddress = Zoho.MailFromAddress,
+                toAddress = string.Join(",", toAddresses),
+                subject,
+                content = htmlBody,
+                mailFormat = "html"
+            };
+            request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+
+            var response = await client.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(ct);
+                logger.LogError("Zoho Mail send failed [{Status}]: {Error}", (int)response.StatusCode, error);
+            }
+            else
+            {
+                logger.LogInformation("Zoho Mail sent to {Count} recipients: {Subject}", toAddresses.Count, subject);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Zoho Mail SendMailAsync threw an exception for subject: {Subject}", subject);
+        }
+    }
+
+    private async Task<string?> GetMailAccessTokenAsync(CancellationToken ct)
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("ZohoCliq");
+            var tokenUrl = "https://accounts.zoho.in/oauth/v2/token";
+            var form = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"]    = "refresh_token",
+                ["client_id"]     = Zoho.MailClientId,
+                ["client_secret"] = Zoho.MailClientSecret,
+                ["refresh_token"] = Zoho.MailRefreshToken
+            });
+
+            var response = await client.PostAsync(tokenUrl, form, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogError("Zoho token refresh failed [{Status}].", (int)response.StatusCode);
+                return null;
+            }
+
+            var json = JsonSerializer.Deserialize<JsonElement>(await response.Content.ReadAsStringAsync(ct));
+            return json.TryGetProperty("access_token", out var tok) ? tok.GetString() : null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Zoho Mail token refresh threw an exception.");
+            return null;
+        }
+    }
+
+    // ── P8: Zoho WorkDrive ───────────────────────────────────────────────────
+
+    public async Task<string?> UploadToWorkDriveAsync(string fileName, string contentType,
+        Stream data, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(Zoho.WorkDriveBaseUrl)
+            || string.IsNullOrWhiteSpace(Zoho.WorkDriveFolderId))
+        {
+            logger.LogWarning("Zoho WorkDrive not configured — file not uploaded: {File}", fileName);
+            return null;
+        }
+
+        try
+        {
+            var accessToken = await GetMailAccessTokenAsync(ct); // reuses same OAuth app
+            if (accessToken is null) return null;
+
+            var client = httpClientFactory.CreateClient("ZohoCliq");
+            var url = $"{Zoho.WorkDriveBaseUrl.TrimEnd('/')}/api/v1/upload";
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Zoho-oauthtoken", accessToken);
+            request.Headers.Add("overrideNameConflict", "true");
+
+            using var form = new MultipartFormDataContent();
+            using var fileContent = new StreamContent(data);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+            form.Add(fileContent, "content", fileName);
+            form.Add(new StringContent(Zoho.WorkDriveFolderId), "parent_id");
+            form.Add(new StringContent("true"), "override-name-conflict");
+            request.Content = form;
+
+            var response = await client.SendAsync(request, ct);
+            var responseBody = await response.Content.ReadAsStringAsync(ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogError("WorkDrive upload failed [{Status}]: {Error}", (int)response.StatusCode, responseBody);
+                return null;
+            }
+
+            // Response: { "data": { "attributes": { "permalink": "https://..." } } }
+            var json = JsonSerializer.Deserialize<JsonElement>(responseBody);
+            if (json.TryGetProperty("data", out var dataEl)
+                && dataEl.TryGetProperty("attributes", out var attr)
+                && attr.TryGetProperty("permalink", out var link))
+            {
+                var fileUrl = link.GetString();
+                logger.LogInformation("WorkDrive upload succeeded: {File} → {Url}", fileName, fileUrl);
+                return fileUrl;
+            }
+
+            logger.LogWarning("WorkDrive upload OK but could not parse permalink from response.");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "WorkDrive UploadToWorkDriveAsync threw an exception for file: {File}", fileName);
+            return null;
+        }
     }
 
     // P14 will replace this with Azure OpenAI / Zoho Zia transcript parsing.

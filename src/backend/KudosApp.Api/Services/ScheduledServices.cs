@@ -1,3 +1,4 @@
+using System.Text.Json;
 using KudosApp.Api.Data;
 using KudosApp.Api.Models;
 
@@ -73,7 +74,7 @@ public sealed class DailyReminderHostedService(
 
         while (!ct.IsCancellationRequested)
         {
-            var delay = TimeUntilNext(FireAtUtc);
+            var delay = TimeUntilNextDailyUtc(FireAtUtc);
             logger.LogInformation("Daily reminder sleeping {Minutes:F0} min until next 5 PM IST.", delay.TotalMinutes);
 
             await Task.Delay(delay, ct);
@@ -92,7 +93,7 @@ public sealed class DailyReminderHostedService(
         }
     }
 
-    private static TimeSpan TimeUntilNext(TimeSpan targetUtc)
+    private static TimeSpan TimeUntilNextDailyUtc(TimeSpan targetUtc)
     {
         var now = DateTime.UtcNow;
         var next = now.Date.Add(targetUtc);
@@ -317,7 +318,7 @@ public sealed class ComplianceDigestHostedService(
 
         while (!ct.IsCancellationRequested)
         {
-            var delay = TimeUntilNext(FireAtUtc);
+            var delay = TimeUntilNextUtc(FireAtUtc);
             logger.LogInformation("Compliance digest sleeping {Minutes:F0} min until next 2 PM IST.", delay.TotalMinutes);
 
             await Task.Delay(delay, ct);
@@ -336,10 +337,124 @@ public sealed class ComplianceDigestHostedService(
         }
     }
 
-    private static TimeSpan TimeUntilNext(TimeSpan targetUtc)
+    private static TimeSpan TimeUntilNextUtc(TimeSpan targetUtc)
     {
         var now = DateTime.UtcNow;
         var next = now.Date.Add(targetUtc);
+        if (now >= next) next = next.AddDays(1);
+        return next - now;
+    }
+}
+
+// ── P9: Auto monthly report assembly (last day of month, 6 PM IST) ───────────
+
+public interface IMonthlyReportSchedulerService
+{
+    Task AssembleMonthlyReportsAsync(DateOnly today, CancellationToken ct);
+}
+
+public sealed class MonthlyReportSchedulerService(
+    AppDbContext db,
+    IReportService reportService,
+    IZohoBridge zohoBridge,
+    ILogger<MonthlyReportSchedulerService> logger) : IMonthlyReportSchedulerService
+{
+    public async Task AssembleMonthlyReportsAsync(DateOnly today, CancellationToken ct)
+    {
+        // Only run on last day of the month
+        var lastDay = new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
+        if (today != lastDay) return;
+
+        var managers = db.Users
+            .Where(x => x.IsActive && (x.Role == AppRole.Manager || x.Role == AppRole.Admin))
+            .Select(x => new { x.UserId, x.Name, x.Email })
+            .ToList();
+
+        if (managers.Count == 0) return;
+
+        var hrEmails = db.Users
+            .Where(x => x.IsActive && x.Role == AppRole.Hr)
+            .Select(x => x.Email)
+            .ToList();
+
+        foreach (var manager in managers)
+        {
+            var alreadyExists = db.Reports.Any(x =>
+                x.ReportType == ReportType.Monthly
+                && x.StartDate.Year == today.Year
+                && x.StartDate.Month == today.Month
+                && x.GeneratedByUserId == manager.UserId);
+
+            if (alreadyExists)
+            {
+                logger.LogInformation("Monthly report already exists for manager {UserId} — skipping.", manager.UserId);
+                continue;
+            }
+
+            var report = reportService.GenerateMonthly(manager.UserId, today.Year, today.Month);
+
+            var cliqMsg = $"Hi {manager.Name}, your monthly report for {today:MMMM yyyy} (Report #{report.ReportRecordId}) "
+                        + "has been auto-assembled as a Draft. Please review and submit it in KudosApp.";
+            await zohoBridge.SendCliqNotificationAsync(cliqMsg, [manager.Email], ct);
+
+            var allRecipients = new List<string> { manager.Email };
+            allRecipients.AddRange(hrEmails);
+
+            var subject = $"KudosApp — Monthly Report Draft: {today:MMMM yyyy}";
+            var html = $"""
+                <h2>KudosApp Monthly Report — {today:MMMM yyyy}</h2>
+                <p><strong>Report #:</strong> {report.ReportRecordId}</p>
+                <p><strong>Status:</strong> Draft — awaiting manager review and submission.</p>
+                <p><strong>Period:</strong> {report.StartDate:dd MMM yyyy} – {report.EndDate:dd MMM yyyy}</p>
+                <hr/>
+                <p>Log in to KudosApp to review, add notes, and submit the report.</p>
+                <p>Once submitted, a final locked copy will be sent to all HR recipients.</p>
+                """;
+
+            await zohoBridge.SendMailAsync(subject, html, allRecipients, ct: ct);
+
+            logger.LogInformation("Monthly report #{ReportId} assembled for manager {UserId} ({Month}/{Year}).",
+                report.ReportRecordId, manager.UserId, today.Month, today.Year);
+        }
+    }
+}
+
+public sealed class MonthlyReportHostedService(
+    IServiceScopeFactory scopeFactory,
+    ILogger<MonthlyReportHostedService> logger) : BackgroundService
+{
+    // 6 PM IST = 12:30 PM UTC, checks daily — the service itself skips non-last-days
+    private static readonly TimeSpan FireAtUtc = TimeSpan.FromHours(12).Add(TimeSpan.FromMinutes(30));
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        logger.LogInformation("MonthlyReportHostedService started.");
+
+        while (!ct.IsCancellationRequested)
+        {
+            var delay = TimeUntilNextFireUtc();
+            logger.LogInformation("Monthly report sleeping {Hours:F1} hrs until next 6 PM IST check.", delay.TotalHours);
+
+            await Task.Delay(delay, ct);
+
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IMonthlyReportSchedulerService>();
+                await service.AssembleMonthlyReportsAsync(today, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Monthly report assembly job failed on {Date}.", today);
+            }
+        }
+    }
+
+    private static TimeSpan TimeUntilNextFireUtc()
+    {
+        var now = DateTime.UtcNow;
+        var next = now.Date.Add(FireAtUtc);
         if (now >= next) next = next.AddDays(1);
         return next - now;
     }

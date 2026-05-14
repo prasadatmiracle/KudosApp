@@ -12,7 +12,7 @@ namespace KudosApp.Api.Controllers;
 [ApiController]
 [Route("api/events")]
 [Authorize]
-public sealed class EventsController(AppDbContext db, IAuditService auditService) : ControllerBase
+public sealed class EventsController(AppDbContext db, IAuditService auditService, IZohoBridge zohoBridge) : ControllerBase
 {
     private const int MaxMediaPerEvent = 10;
 
@@ -35,6 +35,7 @@ public sealed class EventsController(AppDbContext db, IAuditService auditService
         return Ok(created);
     }
 
+    // Accept a direct URL (backward compat / manual entry)
     [HttpPost("{eventId:int}/media")]
     public ActionResult<EventMedia> AddMedia(int eventId, AddEventMediaInput input)
     {
@@ -57,6 +58,40 @@ public sealed class EventsController(AppDbContext db, IAuditService auditService
         db.SaveChanges();
 
         auditService.Write(userId, "ADD_EVENT_MEDIA", nameof(EventItem), eventId, JsonSerializer.Serialize(created));
+        return Ok(created);
+    }
+
+    // P8: Upload file directly — streams to Zoho WorkDrive, stores returned URL
+    [HttpPost("{eventId:int}/media/upload")]
+    [RequestSizeLimit(20 * 1024 * 1024)] // 20 MB per file
+    public async Task<ActionResult<EventMedia>> UploadMedia(int eventId, IFormFile file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) return BadRequest("No file provided.");
+
+        var userId = User.CurrentUserId();
+        if (!db.Events.Any(x => x.EventId == eventId)) return NotFound("Event not found.");
+
+        var count = db.EventMedia.Count(x => x.EventId == eventId);
+        if (count >= MaxMediaPerEvent) return Conflict("Media limit reached (10 files per event).");
+
+        await using var stream = file.OpenReadStream();
+        var fileUrl = await zohoBridge.UploadToWorkDriveAsync(file.FileName, file.ContentType, stream, ct);
+
+        if (fileUrl is null)
+            return StatusCode(502, "WorkDrive upload failed or is not configured. Provide a URL manually via POST /media.");
+
+        var created = new EventMedia
+        {
+            EventId = eventId,
+            WorkDriveFileUrl = fileUrl,
+            UploadedByUserId = userId,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+        db.EventMedia.Add(created);
+        db.SaveChanges();
+
+        auditService.Write(userId, "UPLOAD_EVENT_MEDIA", nameof(EventItem), eventId,
+            JsonSerializer.Serialize(new { file.FileName, fileUrl }));
         return Ok(created);
     }
 

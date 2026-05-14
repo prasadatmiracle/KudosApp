@@ -15,7 +15,8 @@ namespace KudosApp.Api.Controllers;
 public sealed class ReportsController(
     AppDbContext db,
     IReportService reportService,
-    IAuditService auditService) : ControllerBase
+    IAuditService auditService,
+    IZohoBridge zohoBridge) : ControllerBase
 {
     [HttpGet]
     [Authorize(Roles = "Manager,Admin,Hr")]
@@ -86,7 +87,7 @@ public sealed class ReportsController(
 
     [HttpPost("weekly/{reportRecordId:int}/submit")]
     [Authorize(Roles = "Manager,Admin")]
-    public ActionResult<ReportRecord> SubmitWeekly(int reportRecordId)
+    public async Task<ActionResult<ReportRecord>> SubmitWeekly(int reportRecordId, CancellationToken ct)
     {
         var report = db.Reports.SingleOrDefault(x => x.ReportRecordId == reportRecordId && x.ReportType == ReportType.Weekly);
         if (report is null) return NotFound();
@@ -96,6 +97,10 @@ public sealed class ReportsController(
         db.SaveChanges();
 
         auditService.Write(User.CurrentUserId(), "SUBMIT_LOCK_WEEKLY_REPORT", nameof(ReportRecord), report.ReportRecordId, "{}");
+
+        // P7: email HR + all admins when report is locked
+        await SendReportEmailAsync(report, ct);
+
         return Ok(report);
     }
 
@@ -112,6 +117,30 @@ public sealed class ReportsController(
 
         auditService.Write(User.CurrentUserId(), "REOPEN_REPORT", nameof(ReportRecord), report.ReportRecordId, "{}");
         return Ok(report);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private async Task SendReportEmailAsync(ReportRecord report, CancellationToken ct)
+    {
+        var recipients = db.Users
+            .Where(x => x.IsActive && (x.Role == AppRole.Hr || x.Role == AppRole.Admin))
+            .Select(x => x.Email)
+            .ToList();
+
+        if (recipients.Count == 0) return;
+
+        var subject = $"KudosApp — {report.ReportType} Report {report.StartDate:dd MMM} – {report.EndDate:dd MMM yyyy} (Locked)";
+        var html = $"""
+            <h2>KudosApp {report.ReportType} Report</h2>
+            <p><strong>Period:</strong> {report.StartDate:dd MMM yyyy} – {report.EndDate:dd MMM yyyy}</p>
+            <p><strong>Status:</strong> Locked</p>
+            <p><strong>Report #:</strong> {report.ReportRecordId}</p>
+            <hr/>
+            <p>Log in to KudosApp to view and export the full report.</p>
+            """;
+
+        await zohoBridge.SendMailAsync(subject, html, recipients, ct: ct);
     }
 
     [HttpGet("{reportRecordId:int}/export")]

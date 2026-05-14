@@ -95,6 +95,10 @@ builder.Services.AddHostedService<WeeklyReportHostedService>();
 builder.Services.AddScoped<IComplianceDigestService, ComplianceDigestService>();
 builder.Services.AddHostedService<ComplianceDigestHostedService>();
 
+// P9 — auto monthly report assembly (last day of month, 6 PM IST)
+builder.Services.AddScoped<IMonthlyReportSchedulerService, MonthlyReportSchedulerService>();
+builder.Services.AddHostedService<MonthlyReportHostedService>();
+
 // Background services
 builder.Services.AddHostedService<ActionItemReminderHostedService>();
 

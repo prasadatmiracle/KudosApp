@@ -15,7 +15,8 @@ namespace KudosApp.Api.Controllers;
 public sealed class AchievementsController(
     AppDbContext db,
     IAuditService auditService,
-    IPointsService pointsService) : ControllerBase
+    IPointsService pointsService,
+    IZohoBridge zohoBridge) : ControllerBase
 {
     [HttpPost]
     public ActionResult<Achievement> Create(CreateAchievementInput input)
@@ -49,6 +50,32 @@ public sealed class AchievementsController(
         pointsService.AddPoints(userId, 10, "Achievement", created.AchievementId);
         auditService.Write(userId, "CREATE_ACHIEVEMENT", nameof(Achievement), created.AchievementId, JsonSerializer.Serialize(created));
         return Ok(created);
+    }
+
+    // P8: Upload proof document to WorkDrive and attach to achievement
+    [HttpPost("{achievementId:int}/proof/upload")]
+    [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB
+    public async Task<IActionResult> UploadProof(int achievementId, IFormFile file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) return BadRequest("No file provided.");
+
+        var userId = User.CurrentUserId();
+        var achievement = db.Achievements.SingleOrDefault(x => x.AchievementId == achievementId);
+        if (achievement is null) return NotFound();
+        if (achievement.UserId != userId && User.CurrentRole() != AppRole.Admin) return Forbid();
+
+        await using var stream = file.OpenReadStream();
+        var fileUrl = await zohoBridge.UploadToWorkDriveAsync(file.FileName, file.ContentType, stream, ct);
+
+        if (fileUrl is null)
+            return StatusCode(502, "WorkDrive upload failed or is not configured.");
+
+        achievement.ProofWorkDriveUrl = fileUrl;
+        db.SaveChanges();
+
+        auditService.Write(userId, "UPLOAD_ACHIEVEMENT_PROOF", nameof(Achievement), achievementId,
+            JsonSerializer.Serialize(new { file.FileName, fileUrl }));
+        return Ok(new { fileUrl });
     }
 
     [HttpGet("feed")]
