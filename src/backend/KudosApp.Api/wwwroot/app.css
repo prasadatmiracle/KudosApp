@@ -121,17 +121,24 @@ button.active {
   bottom: 0;
   background: #fff;
   border-top: 1px solid #d7e1ec;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 4px;
   padding: 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 
+.bottom-nav::-webkit-scrollbar { display: none; }
+
 .bottom-nav button {
-  padding: 8px 4px;
+  padding: 8px 10px;
   font-size: 12px;
   background: #edf3f8;
   color: #27465f;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .pill {
@@ -176,4 +183,221 @@ button.active {
 
 .small {
   font-size: 12px;
+}
+
+/* ── Team Health Dashboard (P10) ─────────────────────────────────────── */
+
+.stat-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 12px;
+  box-shadow: 0 2px 8px rgba(8,44,75,0.08);
+  text-align: center;
+}
+
+.stat-card .stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.stat-card .stat-label {
+  font-size: 11px;
+  color: #51697f;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.stat-card.green  .stat-value { color: #16a34a; }
+.stat-card.orange .stat-value { color: #ea580c; }
+.stat-card.red    .stat-value { color: #dc2626; }
+.stat-card.blue   .stat-value { color: #1e6ea7; }
+.stat-card.purple .stat-value { color: #7c3aed; }
+
+.section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #51697f;
+  margin: 18px 0 8px;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chip.red    { background: #fee2e2; color: #991b1b; }
+.chip.orange { background: #ffedd5; color: #9a3412; }
+.chip.green  { background: #dcfce7; color: #15803d; }
+.chip.blue   { background: #dbeafe; color: #1d4ed8; }
+.chip.gray   { background: #f1f5f9; color: #475569; }
+
+.chart-wrap {
+  position: relative;
+  max-width: 260px;
+  margin: 0 auto;
+}
+
+.engagement-ring {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.engagement-ring .ring-label {
+  position: absolute;
+  text-align: center;
+  pointer-events: none;
+}
+
+.engagement-ring .ring-score {
+  font-size: 28px;
+  font-weight: 700;
+  color: #143049;
+  line-height: 1;
+}
+
+.engagement-ring .ring-sub {
+  font-size: 10px;
+  color: #51697f;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.trend-bar-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 60px;
+  padding: 0 4px;
+}
+
+.trend-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.trend-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: #1e6ea7;
+  min-height: 4px;
+  transition: height 0.3s ease;
+}
+
+.trend-bar-label {
+  font-size: 9px;
+  color: #51697f;
+}
+
+/* ── Compliance Heatmap (P11) ─────────────────────────────────────────── */
+
+.heatmap-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.heatmap-table {
+  border-collapse: separate;
+  border-spacing: 3px;
+  min-width: 100%;
+  font-size: 11px;
+}
+
+.heatmap-table th {
+  font-weight: 600;
+  color: #51697f;
+  padding: 2px 4px;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.heatmap-table .name-col {
+  min-width: 110px;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 8px;
+  font-weight: 600;
+  color: #143049;
+}
+
+.hm-cell {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  cursor: default;
+  transition: transform 0.1s;
+}
+
+.hm-cell:hover { transform: scale(1.4); }
+
+.hm-cell.submitted   { background: #16a34a; }
+.hm-cell.blocked     { background: #dc2626; }
+.hm-cell.missing     { background: #e2e8f0; }
+.hm-cell.weekend     { background: transparent; }
+
+.heatmap-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.heatmap-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #51697f;
+}
+
+.heatmap-legend-box {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+
+.date-range-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.date-range-row label {
+  font-size: 12px;
+  flex: 1;
+  min-width: 130px;
+}
+
+/* ── Mgr-only nav items hidden for employees ─────────────────────────── */
+.bottom-nav button.mgr-only.hidden {
+  display: none;
 }

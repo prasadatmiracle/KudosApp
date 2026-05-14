@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kudos App</title>
     <link rel="stylesheet" href="/app.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
   <body>
     <div id="loginView" class="center-wrap">
@@ -34,6 +35,8 @@
 
       <nav class="bottom-nav">
         <button data-view="dashboard">Dashboard</button>
+        <button data-view="health" data-role-min="Manager" class="mgr-only">Team Health</button>
+        <button data-view="heatmap" data-role-min="Manager" class="mgr-only">Heatmap</button>
         <button data-view="tasks">Tasks</button>
         <button data-view="daily">Daily</button>
         <button data-view="feed">Feed</button>

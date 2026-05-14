@@ -82,9 +82,17 @@
     return response.json();
   }
 
+  function isManager() {
+    const role = state.user?.role || "";
+    return role === "Manager" || role === "Admin";
+  }
+
   function setNavActive() {
     document.querySelectorAll(".bottom-nav button").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.view === state.view);
+      if (btn.classList.contains("mgr-only")) {
+        btn.classList.toggle("hidden", !isManager());
+      }
     });
   }
 
@@ -378,6 +386,256 @@
     </section>`;
   }
 
+  // ── P10: Team Health Dashboard ───────────────────────────────────────────
+
+  let billingChart = null;
+
+  async function renderHealthDashboard() {
+    content.innerHTML = `<div class="card" style="text-align:center;padding:24px">Loading team health…</div>`;
+    try {
+      const h = await api("/dashboard/team-health");
+
+      const engagementColor = h.engagementScore >= 80 ? "#16a34a"
+                            : h.engagementScore >= 60 ? "#ea580c" : "#dc2626";
+
+      const maxTrend = Math.max(...(h.weeklyTrend.map(t => t.count)), 1);
+
+      content.innerHTML = `
+        <div class="stack">
+
+          <!-- Stat cards row -->
+          <div class="stat-grid">
+            <div class="stat-card ${h.participationPct >= 80 ? "green" : h.participationPct >= 60 ? "orange" : "red"}">
+              <div class="stat-value">${h.participationPct}%</div>
+              <div class="stat-label">Participation today</div>
+            </div>
+            <div class="stat-card ${h.blockedTickets.length === 0 ? "green" : "red"}">
+              <div class="stat-value">${h.blockedTickets.length}</div>
+              <div class="stat-label">Blocked tickets</div>
+            </div>
+            <div class="stat-card ${h.pendingAchievements + h.pendingSales === 0 ? "green" : "orange"}">
+              <div class="stat-value">${h.pendingAchievements + h.pendingSales}</div>
+              <div class="stat-label">Pending validations</div>
+            </div>
+            <div class="stat-card ${h.overdueActionItems === 0 ? "blue" : "red"}">
+              <div class="stat-value">${h.openActionItems}</div>
+              <div class="stat-label">Open action items</div>
+            </div>
+          </div>
+
+          <!-- Engagement score + billing donut -->
+          <div class="grid">
+            <div class="card">
+              <div class="section-title">Team Engagement Score</div>
+              <div class="engagement-ring">
+                <canvas id="engagementChart" width="160" height="160"></canvas>
+                <div class="ring-label">
+                  <div class="ring-score" style="color:${engagementColor}">${h.engagementScore}</div>
+                  <div class="ring-sub">/ 100</div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-title">Billing Type Breakdown</div>
+              <div class="chart-wrap">
+                <canvas id="billingChart" height="160"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Weekly participation trend -->
+          <div class="card">
+            <div class="section-title">Daily Participation — Last 7 Days</div>
+            <div class="trend-bar-wrap" id="trendBars">
+              ${h.weeklyTrend.map(t => {
+                const pct = Math.round((t.count / h.totalTeam) * 100);
+                const heightPx = Math.max(4, Math.round((t.count / maxTrend) * 52));
+                const dayLabel = new Date(t.date).toLocaleDateString("en-IN", { weekday: "short" });
+                return `<div class="trend-bar-col" title="${dayLabel}: ${t.count}/${h.totalTeam} (${pct}%)">
+                  <div class="trend-bar" style="height:${heightPx}px"></div>
+                  <div class="trend-bar-label">${dayLabel}</div>
+                </div>`;
+              }).join("")}
+            </div>
+          </div>
+
+          <!-- Missing submitters -->
+          ${h.missingNames.length ? `
+          <div class="card">
+            <div class="section-title">Missing Today (${h.missingNames.length})</div>
+            <div class="chip-list">
+              ${h.missingNames.map(n => `<span class="chip orange">${escapeHtml(n)}</span>`).join("")}
+            </div>
+          </div>` : `
+          <div class="card">
+            <div class="section-title">Submissions</div>
+            <div class="chip green" style="display:inline-block">All ${h.totalTeam} members submitted today</div>
+          </div>`}
+
+          <!-- Blocked tickets -->
+          ${h.blockedTickets.length ? `
+          <div class="card">
+            <div class="section-title">Blocked Tickets</div>
+            <div class="stack">
+              ${h.blockedTickets.map(t => `
+                <div class="between">
+                  <span class="chip red">${escapeHtml(t.ticketNumber)}</span>
+                  <span class="small muted" style="flex:1;margin-left:8px">${escapeHtml(t.description)}</span>
+                </div>`).join("")}
+            </div>
+          </div>` : ""}
+
+          <!-- Pending validations breakdown -->
+          ${h.pendingAchievements + h.pendingSales > 0 ? `
+          <div class="card">
+            <div class="section-title">Pending Validations</div>
+            <div class="chip-list">
+              ${h.pendingAchievements > 0 ? `<span class="chip orange">${h.pendingAchievements} achievements</span>` : ""}
+              ${h.pendingSales > 0 ? `<span class="chip orange">${h.pendingSales} sales enquiries</span>` : ""}
+            </div>
+          </div>` : ""}
+
+        </div>`;
+
+      // Engagement doughnut (ring chart)
+      if (billingChart) { billingChart.destroy(); billingChart = null; }
+
+      new Chart(document.getElementById("engagementChart"), {
+        type: "doughnut",
+        data: {
+          datasets: [{
+            data: [h.engagementScore, 100 - h.engagementScore],
+            backgroundColor: [engagementColor, "#e2e8f0"],
+            borderWidth: 0,
+            circumference: 360
+          }]
+        },
+        options: {
+          cutout: "72%",
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          animation: { duration: 600 }
+        }
+      });
+
+      // Billing type donut
+      const billingLabels = h.billingBreakdown.map(b => b.type);
+      const billingData   = h.billingBreakdown.map(b => b.count);
+      const billingColors = ["#1e6ea7","#16a34a","#ea580c","#7c3aed","#0891b2"];
+
+      billingChart = new Chart(document.getElementById("billingChart"), {
+        type: "doughnut",
+        data: {
+          labels: billingLabels,
+          datasets: [{
+            data: billingData,
+            backgroundColor: billingColors.slice(0, billingLabels.length),
+            borderWidth: 2,
+            borderColor: "#fff"
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { position: "bottom", labels: { font: { size: 11 }, padding: 8 } }
+          },
+          animation: { duration: 600 }
+        }
+      });
+
+    } catch (err) {
+      content.innerHTML = showCardError(err.message);
+    }
+  }
+
+  // ── P11: Compliance Heatmap ───────────────────────────────────────────────
+
+  async function renderHeatmap() {
+    const today = new Date();
+    const end   = toIso(today);
+    const start30 = new Date(today); start30.setDate(today.getDate() - 29);
+    const start = toIso(start30);
+
+    content.innerHTML = `
+      <div class="stack">
+        <div class="card">
+          <div class="date-range-row">
+            <label>From<input type="date" id="hmStart" value="${start}" /></label>
+            <label>To<input type="date" id="hmEnd"   value="${end}"   /></label>
+            <button id="hmLoad" style="align-self:flex-end">Load</button>
+          </div>
+        </div>
+        <div id="hmResult"></div>
+      </div>`;
+
+    document.getElementById("hmLoad").addEventListener("click", () => {
+      const s = document.getElementById("hmStart").value;
+      const e = document.getElementById("hmEnd").value;
+      loadHeatmap(s, e);
+    });
+
+    loadHeatmap(start, end);
+  }
+
+  async function loadHeatmap(startDate, endDate) {
+    const wrap = document.getElementById("hmResult");
+    wrap.innerHTML = `<div class="card" style="text-align:center;padding:16px">Loading…</div>`;
+    try {
+      const data = await api(`/daily-updates/compliance-heatmap/range?startDate=${startDate}&endDate=${endDate}`);
+      if (!data.users.length) {
+        wrap.innerHTML = `<div class="card"><p class="muted">No team members found.</p></div>`;
+        return;
+      }
+
+      // Build date headers — show only weekdays abbreviated
+      const headerCells = data.dates.map(d => {
+        const dt  = new Date(d);
+        const dow = dt.getUTCDay();
+        const isWeekend = dow === 0 || dow === 6;
+        const label = isWeekend ? "" : dt.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        return `<th title="${d}" style="font-size:9px;writing-mode:vertical-rl;transform:rotate(180deg);height:48px;padding:2px 1px">${label}</th>`;
+      }).join("");
+
+      const bodyRows = data.users.map(u => {
+        const cells = u.days.map(d => {
+          if (d.isWeekend) return `<td><div class="hm-cell weekend"></div></td>`;
+          const cls  = d.submitted ? (d.status === "Blocked" ? "blocked" : "submitted") : "missing";
+          const tip  = `${d.date}: ${d.submitted ? d.status : "Not submitted"}`;
+          return `<td><div class="hm-cell ${cls}" title="${tip}"></div></td>`;
+        }).join("");
+        return `<tr>
+          <td class="name-col" title="${escapeHtml(u.name)}">${escapeHtml(u.name)}</td>
+          ${cells}
+        </tr>`;
+      }).join("");
+
+      wrap.innerHTML = `
+        <div class="card">
+          <div class="section-title">Submission Heatmap — ${startDate} to ${endDate}</div>
+          <div class="heatmap-wrap">
+            <table class="heatmap-table">
+              <thead><tr><th class="name-col">Member</th>${headerCells}</tr></thead>
+              <tbody>${bodyRows}</tbody>
+            </table>
+          </div>
+          <div class="heatmap-legend">
+            <div class="heatmap-legend-item">
+              <div class="heatmap-legend-box" style="background:#16a34a"></div>Submitted
+            </div>
+            <div class="heatmap-legend-item">
+              <div class="heatmap-legend-box" style="background:#dc2626"></div>Blocked
+            </div>
+            <div class="heatmap-legend-item">
+              <div class="heatmap-legend-box" style="background:#e2e8f0"></div>Missing
+            </div>
+            <div class="heatmap-legend-item">
+              <div class="heatmap-legend-box" style="background:transparent;border:1px dashed #cbd5e1"></div>Weekend
+            </div>
+          </div>
+        </div>`;
+    } catch (err) {
+      wrap.innerHTML = showCardError(err.message);
+    }
+  }
+
   async function renderProfile() {
     const profile = state.user;
     content.innerHTML = `
@@ -393,17 +651,23 @@
     setNavActive();
     const titles = {
       dashboard: "Dashboard",
-      tasks: "Tasks",
-      daily: "Daily Update",
-      feed: "Feed",
+      health:    "Team Health",
+      heatmap:   "Compliance Heatmap",
+      tasks:     "Tasks",
+      daily:     "Daily Update",
+      feed:      "Feed",
       leaderboard: "Leaderboard",
       validation: "Validation Queue",
-      reports: "Reports",
-      profile: "Profile"
+      reports:   "Reports",
+      profile:   "Profile"
     };
     viewTitle.textContent = titles[state.view] || "Kudos App";
 
     switch (state.view) {
+      case "health":
+        return renderHealthDashboard();
+      case "heatmap":
+        return renderHeatmap();
       case "tasks":
         return renderTasks();
       case "daily":
