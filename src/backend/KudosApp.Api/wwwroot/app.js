@@ -546,8 +546,121 @@
         }
       });
 
+      // P16: load nudge feed and append below the health dashboard
+      await renderNudgeFeed();
+
     } catch (err) {
       content.innerHTML = showCardError(err.message);
+    }
+  }
+
+  // ── P16: Smart Nudges feed ────────────────────────────────────────────────
+
+  async function loadNudgeCounts() {
+    if (!isManager()) return;
+    try {
+      const counts = await api("/nudges/counts");
+      const badge = document.getElementById("nudgeBadge");
+      if (badge) {
+        if (counts.total > 0) {
+          badge.textContent = counts.total;
+          badge.classList.remove("hidden");
+        } else {
+          badge.classList.add("hidden");
+        }
+      }
+    } catch (_) { /* non-critical */ }
+  }
+
+  async function renderNudgeFeed() {
+    const nudgeContainer = document.createElement("div");
+    nudgeContainer.id = "nudgeFeed";
+    nudgeContainer.innerHTML = `<div class="section-title" style="margin-top:18px">Smart Nudges</div>
+      <div class="card" style="text-align:center;padding:16px;color:#51697f;font-size:13px">Loading nudges…</div>`;
+    content.querySelector(".stack").appendChild(nudgeContainer);
+
+    try {
+      const n = await api("/nudges");
+
+      const badge = document.getElementById("nudgeBadge");
+      if (badge) {
+        if (n.totalCount > 0) { badge.textContent = n.totalCount; badge.classList.remove("hidden"); }
+        else badge.classList.add("hidden");
+      }
+
+      if (n.totalCount === 0) {
+        nudgeContainer.innerHTML = `
+          <div class="section-title" style="margin-top:18px">Smart Nudges</div>
+          <div class="card nudge-clear">
+            <span style="font-size:18px">✅</span>
+            <span>No nudges — all items are on track!</span>
+          </div>`;
+        return;
+      }
+
+      let html = `<div class="section-title" style="margin-top:18px">Smart Nudges <span class="nudge-badge-inline">${n.totalCount}</span></div>`;
+
+      if (n.staleEnquiries.length > 0) {
+        html += `<div class="card nudge-card">
+          <div class="nudge-card-header orange">
+            <span class="nudge-icon">📭</span>
+            <strong>Stale Sales Enquiries (${n.staleEnquiries.length})</strong>
+            <span class="nudge-meta">Pending &gt; 7 days</span>
+          </div>
+          <div class="stack" style="gap:6px;margin-top:8px">
+            ${n.staleEnquiries.map(e => `
+              <div class="nudge-row">
+                <span class="chip orange">${escapeHtml(e.clientName)}</span>
+                <span class="nudge-tech muted">${escapeHtml(e.technology)}</span>
+                <span class="nudge-age">${e.daysOld}d old</span>
+                <span class="muted small">${escapeHtml(e.salesCoordinator)}</span>
+              </div>`).join("")}
+          </div>
+        </div>`;
+      }
+
+      if (n.blockedTickets.length > 0) {
+        html += `<div class="card nudge-card">
+          <div class="nudge-card-header red">
+            <span class="nudge-icon">🚧</span>
+            <strong>Blocked Ticket Streaks (${n.blockedTickets.length})</strong>
+            <span class="nudge-meta">Blocked &ge; 3 days</span>
+          </div>
+          <div class="stack" style="gap:6px;margin-top:8px">
+            ${n.blockedTickets.map(b => `
+              <div class="nudge-row">
+                <span class="chip red">${escapeHtml(b.ticketNumber)}</span>
+                <span class="nudge-tech">${escapeHtml(b.userName)}</span>
+                <span class="nudge-age">${b.blockedDays}d blocked</span>
+                <span class="muted small">${escapeHtml(b.projectCode)}</span>
+              </div>`).join("")}
+          </div>
+        </div>`;
+      }
+
+      if (n.pendingAchievements.length > 0) {
+        html += `<div class="card nudge-card">
+          <div class="nudge-card-header blue">
+            <span class="nudge-icon">🏆</span>
+            <strong>Overdue Pending Achievements (${n.pendingAchievements.length})</strong>
+            <span class="nudge-meta">Awaiting validation &gt; 5 days</span>
+          </div>
+          <div class="stack" style="gap:6px;margin-top:8px">
+            ${n.pendingAchievements.map(a => `
+              <div class="nudge-row">
+                <span class="chip blue">${escapeHtml(a.category)}</span>
+                <span class="nudge-tech">${escapeHtml(a.title)}</span>
+                <span class="nudge-age">${a.daysOld}d pending</span>
+                <span class="muted small">${escapeHtml(a.userName)}</span>
+              </div>`).join("")}
+          </div>
+        </div>`;
+      }
+
+      nudgeContainer.innerHTML = html;
+    } catch (err) {
+      nudgeContainer.innerHTML = `<div class="section-title" style="margin-top:18px">Smart Nudges</div>
+        <div class="card" style="color:#8b1f1b;padding:12px;font-size:13px">Could not load nudges: ${escapeHtml(err.message)}</div>`;
     }
   }
 
@@ -715,6 +828,7 @@
       setLoginError("");
       state.view = "dashboard";
       paint();
+      loadNudgeCounts();
     } catch (error) {
       setLoginError(error.message);
     }
@@ -907,4 +1021,5 @@
   }
 
   paint();
+  loadNudgeCounts();
 })();
