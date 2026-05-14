@@ -502,3 +502,40 @@ button.active {
   font-size: 13px;
   font-weight: 600;
 }
+
+/* ── P8: File upload / achievements / events ─────────────────────────── */
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.pill.green  { background: #dcfce7; color: #166534; }
+.pill.red    { background: #fee2e2; color: #991b1b; }
+
+.media-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.media-thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #edf3f8;
+  border-radius: 6px;
+  font-size: 18px;
+  text-decoration: none;
+  border: 1px solid #d7e1ec;
+}

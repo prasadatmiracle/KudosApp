@@ -82,6 +82,19 @@
     return response.json();
   }
 
+  async function apiUpload(path, file) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const response = await fetch(`/api${path}`, {
+      method: "POST",
+      headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
+      body: fd
+    });
+    if (response.status === 401) { clearSession(); paint(); throw new Error("Session expired."); }
+    if (!response.ok) { const t = await response.text(); throw new Error(t || `Upload failed (${response.status})`); }
+    return response.status === 204 ? null : response.json();
+  }
+
   function isManager() {
     const role = state.user?.role || "";
     return role === "Manager" || role === "Admin";
@@ -841,6 +854,235 @@
     }
   }
 
+  // ── P8: Achievements (post + feed) ───────────────────────────────────────
+
+  async function renderAchievements() {
+    const CATEGORIES = ["Certification", "POC", "Blog", "Appreciation", "Award", "Training", "Other"];
+    content.innerHTML = `
+      <div class="stack">
+        <form id="achForm" class="card stack">
+          <div class="section-title">Post Achievement</div>
+          <label>Category
+            <select name="category" required>
+              <option value="">Select category</option>
+              ${CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("")}
+            </select>
+          </label>
+          <label>Title<input name="title" placeholder="e.g. AWS Solutions Architect – Associate" required /></label>
+          <label>Description<textarea name="description" rows="2" placeholder="Brief details…"></textarea></label>
+          <label>Proof document (optional)
+            <div class="upload-row">
+              <input type="file" id="achProofFile" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" />
+              <span class="small muted">PDF, DOC, or image · max 10 MB</span>
+            </div>
+          </label>
+          <div class="row">
+            <button type="submit">Submit achievement</button>
+          </div>
+          <div id="achMsg"></div>
+        </form>
+
+        <div class="section-title">Team Achievements</div>
+        <div id="achFeed"><div class="card" style="text-align:center;padding:16px;color:#51697f">Loading…</div></div>
+      </div>`;
+
+    document.getElementById("achForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById("achMsg");
+      const form = e.target;
+      const btn  = form.querySelector("button[type=submit]");
+      btn.disabled = true;
+      try {
+        const ach = await api("/achievements", {
+          method: "POST",
+          body: {
+            category:    form.category.value,
+            title:       form.title.value,
+            description: form.description.value,
+            proofWorkDriveUrl: null
+          }
+        });
+
+        const proofFile = document.getElementById("achProofFile").files[0];
+        if (proofFile) {
+          msg.className = ""; msg.textContent = "Uploading proof…";
+          try {
+            await apiUpload(`/achievements/${ach.achievementId}/proof/upload`, proofFile);
+          } catch (uploadErr) {
+            msg.className = "error";
+            msg.textContent = `Achievement saved but proof upload failed: ${uploadErr.message}`;
+            form.reset();
+            loadAchFeed();
+            return;
+          }
+        }
+
+        msg.className = "success";
+        msg.textContent = "Achievement submitted for validation.";
+        form.reset();
+        loadAchFeed();
+      } catch (err) {
+        msg.className = "error";
+        msg.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    loadAchFeed();
+  }
+
+  async function loadAchFeed() {
+    const wrap = document.getElementById("achFeed");
+    if (!wrap) return;
+    try {
+      const rows = await api("/achievements/feed?pageSize=30");
+      if (!rows.length) {
+        wrap.innerHTML = `<div class="card"><p class="muted">No achievements yet — be the first!</p></div>`;
+        return;
+      }
+      wrap.innerHTML = rows.map(a => `
+        <div class="card between" style="align-items:flex-start;gap:8px">
+          <div style="flex:1">
+            <div class="between">
+              <strong>${escapeHtml(a.title)}</strong>
+              <span class="pill ${a.validationStatus === "Approved" ? "green" : a.validationStatus === "Rejected" ? "red" : ""}">${escapeHtml(a.validationStatus)}</span>
+            </div>
+            <div class="small muted">${escapeHtml(a.category)} · ${escapeHtml(a.userName)}</div>
+            ${a.description ? `<div class="small" style="margin-top:4px">${escapeHtml(a.description)}</div>` : ""}
+          </div>
+          ${a.proofWorkDriveUrl ? `<a href="${escapeHtml(a.proofWorkDriveUrl)}" target="_blank" rel="noopener" class="secondary" style="font-size:12px;padding:4px 8px">Proof</a>` : ""}
+        </div>`).join("");
+    } catch (err) {
+      wrap.innerHTML = showCardError(err.message);
+    }
+  }
+
+  // ── P8: Events (create + feed + photo upload) ────────────────────────────
+
+  async function renderEvents() {
+    const managerSection = isManager() ? `
+      <form id="evtForm" class="card stack">
+        <div class="section-title">Create Event</div>
+        <label>Title<input name="title" required /></label>
+        <label>Description<textarea name="description" rows="2"></textarea></label>
+        <label>Date<input type="date" name="eventDate" required value="${toIso(new Date())}" /></label>
+        <label>Location<input name="location" placeholder="Office / Virtual / Venue" /></label>
+        <button type="submit">Create event</button>
+        <div id="evtMsg"></div>
+      </form>` : "";
+
+    content.innerHTML = `
+      <div class="stack">
+        ${managerSection}
+        <div class="section-title">Upcoming &amp; Recent Events</div>
+        <div id="evtFeed"><div class="card" style="text-align:center;padding:16px;color:#51697f">Loading…</div></div>
+      </div>`;
+
+    if (isManager()) {
+      document.getElementById("evtForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const btn  = form.querySelector("button[type=submit]");
+        const msg  = document.getElementById("evtMsg");
+        btn.disabled = true;
+        try {
+          await api("/events", {
+            method: "POST",
+            body: {
+              title:       form.title.value,
+              description: form.description.value,
+              eventDate:   form.eventDate.value,
+              location:    form.location.value
+            }
+          });
+          msg.className = "success";
+          msg.textContent = "Event created.";
+          form.reset();
+          form.eventDate.value = toIso(new Date());
+          loadEvtFeed();
+        } catch (err) {
+          msg.className = "error";
+          msg.textContent = err.message;
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+
+    loadEvtFeed();
+  }
+
+  async function loadEvtFeed() {
+    const wrap = document.getElementById("evtFeed");
+    if (!wrap) return;
+    try {
+      const rows = await api("/events/feed?pageSize=20");
+      if (!rows.length) {
+        wrap.innerHTML = `<div class="card"><p class="muted">No events yet.</p></div>`;
+        return;
+      }
+      wrap.innerHTML = rows.map(evt => `
+        <div class="card stack" data-evt-id="${evt.eventId}">
+          <div class="between">
+            <strong>${escapeHtml(evt.title)}</strong>
+            <span class="small muted">${escapeHtml(evt.eventDate)}</span>
+          </div>
+          ${evt.location ? `<div class="small muted">${escapeHtml(evt.location)}</div>` : ""}
+          ${evt.description ? `<div class="small" style="margin-top:4px">${escapeHtml(evt.description)}</div>` : ""}
+          ${evt.media?.length ? `
+          <div class="media-strip">
+            ${evt.media.map(url => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="media-thumb" title="View photo">📎</a>`).join("")}
+          </div>` : ""}
+          <div class="row" style="margin-top:4px">
+            <label class="upload-btn">
+              <input type="file" accept="image/*,.pdf" data-action="upload-event-photo" data-id="${evt.eventId}" style="display:none" />
+              <span class="secondary" style="font-size:12px;padding:4px 10px;cursor:pointer">+ Add Photo</span>
+            </label>
+            <span class="small muted upload-status-${evt.eventId}"></span>
+          </div>
+        </div>`).join("");
+
+      // Wire file inputs for photo upload
+      wrap.querySelectorAll("input[data-action=upload-event-photo]").forEach(input => {
+        input.addEventListener("change", async () => {
+          const file = input.files[0];
+          if (!file) return;
+          const evtId  = input.dataset.id;
+          const status = wrap.querySelector(`.upload-status-${evtId}`);
+          status.textContent = "Uploading…";
+          try {
+            await apiUpload(`/events/${evtId}/media/upload`, file);
+            status.textContent = "Photo added!";
+            setTimeout(() => loadEvtFeed(), 800);
+          } catch (err) {
+            if (err.message.includes("502") || err.message.includes("WorkDrive")) {
+              status.textContent = "";
+              showUrlFallback(evtId, wrap);
+            } else {
+              status.className = `error small upload-status-${evtId}`;
+              status.textContent = err.message;
+            }
+          }
+        });
+      });
+    } catch (err) {
+      wrap.innerHTML = showCardError(err.message);
+    }
+  }
+
+  function showUrlFallback(evtId, container) {
+    const card = container.querySelector(`[data-evt-id="${evtId}"]`);
+    if (!card) return;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.marginTop = "4px";
+    row.innerHTML = `
+      <input type="url" placeholder="Paste WorkDrive URL" style="flex:1" id="urlFallback-${evtId}" />
+      <button data-action="save-media-url" data-id="${evtId}" style="font-size:12px;padding:4px 10px">Save URL</button>`;
+    card.appendChild(row);
+  }
+
   async function renderProfile() {
     const profile = state.user;
     content.innerHTML = `
@@ -861,8 +1103,10 @@
       inbox:     "Smart Inbox",
       tasks:     "Tasks",
       daily:     "Daily Update",
-      feed:      "Feed",
-      leaderboard: "Leaderboard",
+      feed:         "Feed",
+      achievements: "Achievements",
+      events:       "Events",
+      leaderboard:  "Leaderboard",
       validation: "Validation Queue",
       reports:   "Reports",
       profile:   "Profile"
@@ -882,6 +1126,10 @@
         return renderDaily();
       case "feed":
         return renderFeed();
+      case "achievements":
+        return renderAchievements();
+      case "events":
+        return renderEvents();
       case "leaderboard":
         return renderLeaderboard();
       case "validation":
@@ -1024,6 +1272,18 @@
     if (action === "export-pptx") {
       const id = Number(event.target.dataset.id);
       await handleExport(id, "pptx");
+    }
+    if (action === "save-media-url") {
+      const evtId = event.target.dataset.id;
+      const input = document.getElementById(`urlFallback-${evtId}`);
+      const url = input?.value?.trim();
+      if (!url) return;
+      try {
+        await api(`/events/${evtId}/media`, { method: "POST", body: { workDriveFileUrl: url } });
+        loadEvtFeed();
+      } catch (err) {
+        alert(err.message);
+      }
     }
     if (action === "view-narrative") {
       const id = Number(event.target.dataset.id);
