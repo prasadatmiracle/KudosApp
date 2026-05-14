@@ -378,6 +378,11 @@
       <div class="row">
         <button class="secondary" data-action="export-report" data-id="${row.reportRecordId}" title="Download as Excel (.xlsx)">Export XLSX</button>
         ${
+          row.reportType === "Monthly"
+            ? `<button class="secondary" data-action="export-pptx" data-id="${row.reportRecordId}" title="Download as PowerPoint (.pptx)">Export PPTX</button>`
+            : ""
+        }
+        ${
           row.reportType === "Weekly" && row.status !== "Locked"
             ? `<button data-action="lock-weekly" data-id="${row.reportRecordId}">Lock Weekly</button>`
             : ""
@@ -810,6 +815,10 @@
     if (action === "export-report") {
       const id = Number(event.target.dataset.id);
       await handleExport(id);
+    }
+    if (action === "export-pptx") {
+      const id = Number(event.target.dataset.id);
+      await handleExport(id, "pptx");
     }
   });
 
