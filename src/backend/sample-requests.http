@@ -1,0 +1,15 @@
+@baseUrl = https://localhost:5001/api
+@email = manager@kudos.local
+@zohoToken = demo-token
+
+### Login via Zoho SSO starter
+POST {{baseUrl}}/auth/zoho-sso
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "zohoAccessToken": "{{zohoToken}}"
+}
+
+### Health
+GET {{baseUrl}}/health

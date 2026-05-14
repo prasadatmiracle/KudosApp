@@ -1,0 +1,55 @@
+﻿# Build output
+bin/
+obj/
+out/
+
+# .NET SDK local files
+.dotnet/
+*.user
+*.suo
+.vs/
+*.rsuser
+launchSettings.json
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+NuGet/
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# VS Code
+.vscode/
+
+# Claude Code settings
+.claude/
+
+# Temp / scratch directories
+docx_temp/
+
+# Conversation exports / raw docs (not source)
+*.docx
+
+# Windows / PowerShell caches
+Microsoft/
+
+# Secrets / local config overrides
+appsettings.Development.json
+secrets.json
+*.pfx
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# npm (pitch deck tooling)
+node_modules/

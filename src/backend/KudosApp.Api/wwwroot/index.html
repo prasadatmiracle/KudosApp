@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kudos App</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <div id="loginView" class="center-wrap">
+      <form id="loginForm" class="card login-card">
+        <h1>Kudos App</h1>
+        <p>Mobile-first team engagement platform</p>
+        <label>
+          Email
+          <input id="loginEmail" type="email" value="employee@kudos.local" required />
+        </label>
+        <label>
+          Zoho Access Token
+          <input id="loginToken" type="text" value="demo-token" required />
+        </label>
+        <button type="submit">Sign in</button>
+        <div id="loginError" class="error hidden"></div>
+      </form>
+    </div>
+
+    <div id="appView" class="hidden">
+      <header class="topbar">
+        <h2 id="viewTitle">Dashboard</h2>
+        <button id="logoutBtn" class="secondary">Logout</button>
+      </header>
+
+      <main id="content" class="content"></main>
+
+      <nav class="bottom-nav">
+        <button data-view="dashboard">Dashboard</button>
+        <button data-view="tasks">Tasks</button>
+        <button data-view="daily">Daily</button>
+        <button data-view="feed">Feed</button>
+        <button data-view="leaderboard">Leaderboard</button>
+        <button data-view="validation">Validation</button>
+        <button data-view="reports">Reports</button>
+        <button data-view="profile">Profile</button>
+      </nav>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

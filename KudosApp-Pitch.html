@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KudosApp — Miracle Microsoft Practice</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#060e1f;--blue:#2563eb;--blue-lt:#60a5fa;--green:#10b981;
+  --orange:#f59e0b;--red:#ef4444;--purple:#a78bfa;
+  --white:#f1f5f9;--gray:#64748b;--muted:#94a3b8;
+  --card:rgba(255,255,255,0.055);--border:rgba(255,255,255,0.09);
+}
+body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--navy);color:var(--white);height:100vh;overflow:hidden;user-select:none}
+
+/* ── Deck & slides ─────────────────────────────────────── */
+.deck{position:relative;width:100vw;height:100vh;overflow:hidden}
+.slide{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;padding:52px 60px 80px;
+  opacity:0;transform:translateX(80px);pointer-events:none;
+  transition:opacity .38s ease,transform .38s ease;
+}
+.slide.active{opacity:1;transform:translateX(0);pointer-events:all}
+.slide.out-left{opacity:0;transform:translateX(-80px)}
+.slide.out-right{opacity:0;transform:translateX(80px)}
+
+/* ── Slide backgrounds ────────────────────────────────── */
+.s1{background:radial-gradient(ellipse 80% 60% at 25% 40%,#1e3a8a55,transparent),radial-gradient(ellipse 60% 80% at 80% 70%,#0f4c7520,transparent),var(--navy)}
+.s2{background:radial-gradient(ellipse 70% 60% at 70% 30%,#7f1d1d50,transparent),var(--navy)}
+.s3{background:radial-gradient(ellipse 80% 60% at 20% 60%,#1e3a8a50,transparent),var(--navy)}
+.s4{background:radial-gradient(ellipse 70% 60% at 75% 25%,#13404a55,transparent),var(--navy)}
+.s5{background:radial-gradient(ellipse 80% 60% at 25% 75%,#1e3a8a50,transparent),var(--navy)}
+.s6{background:radial-gradient(ellipse 70% 60% at 60% 40%,#1e1b4b55,transparent),var(--navy)}
+.s7{background:radial-gradient(ellipse 80% 60% at 30% 50%,#13404a55,transparent),var(--navy)}
+.s8{background:radial-gradient(ellipse 70% 60% at 70% 60%,#4a2c0a55,transparent),var(--navy)}
+.s9{background:radial-gradient(ellipse 80% 60% at 30% 35%,#1e3a8a50,transparent),var(--navy)}
+.s10{background:radial-gradient(ellipse 90% 80% at 50% 50%,#1e3a8a40,transparent),var(--navy)}
+
+/* ── Nav bar ──────────────────────────────────────────── */
+.nav{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:14px;z-index:100;
+  background:rgba(6,14,31,.7);backdrop-filter:blur(12px);
+  padding:10px 20px;border-radius:50px;border:1px solid var(--border);
+}
+.nbtn{
+  width:34px;height:34px;border-radius:50%;border:1px solid var(--border);
+  background:var(--card);color:var(--white);font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:background .2s;
+}
+.nbtn:hover{background:var(--blue)}
+.nbtn:disabled{opacity:.25;cursor:default;pointer-events:none}
+.dots{display:flex;gap:7px;align-items:center}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .25s}
+.dot.on{background:var(--blue-lt);width:22px;border-radius:4px}
+.ctr{font-size:12px;color:var(--gray);min-width:36px;text-align:center}
+
+/* ── Typography ───────────────────────────────────────── */
+.tag{font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--blue-lt);margin-bottom:14px}
+h1{font-size:clamp(40px,5.5vw,68px);font-weight:800;line-height:1.08;letter-spacing:-.5px}
+h2{font-size:clamp(26px,3.2vw,44px);font-weight:700;line-height:1.15;letter-spacing:-.3px}
+h3{font-size:clamp(15px,1.6vw,20px);font-weight:600}
+p{color:var(--muted);line-height:1.65;font-size:clamp(13px,1.3vw,16px)}
+.acc{color:var(--blue-lt)}.grn{color:var(--green)}.org{color:var(--orange)}.red{color:var(--red)}.pur{color:var(--purple)}
+
+/* ── Cards & grid ─────────────────────────────────────── */
+.grid{display:grid;gap:14px;width:100%;max-width:1000px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;backdrop-filter:blur(4px)}
+.ci{font-size:26px;margin-bottom:10px}
+
+/* ── Pill ─────────────────────────────────────────────── */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
+.pg{background:rgba(16,185,129,.14);color:var(--green);border:1px solid rgba(16,185,129,.28)}
+.pb{background:rgba(96,165,250,.14);color:var(--blue-lt);border:1px solid rgba(96,165,250,.28)}
+.po{background:rgba(245,158,11,.14);color:var(--orange);border:1px solid rgba(245,158,11,.28)}
+.pr{background:rgba(239,68,68,.14);color:var(--red);border:1px solid rgba(239,68,68,.28)}
+
+/* ── List ─────────────────────────────────────────────── */
+.cl{list-style:none;display:flex;flex-direction:column;gap:11px}
+.cl li{display:flex;align-items:flex-start;gap:11px;font-size:14px;color:var(--white)}
+.cl li .ico{font-size:17px;flex-shrink:0;margin-top:1px}
+
+/* ── Divider ──────────────────────────────────────────── */
+.div{width:54px;height:3px;background:var(--blue);border-radius:2px;margin:14px 0}
+
+/* ── Hero badge ───────────────────────────────────────── */
+.hbadge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(37,99,235,.18);border:1px solid rgba(96,165,250,.3);
+  padding:7px 18px;border-radius:50px;font-size:13px;font-weight:600;
+  color:var(--blue-lt);margin-bottom:22px;
+}
+
+/* ── Big stat ─────────────────────────────────────────── */
+.stat{font-size:clamp(38px,5vw,62px);font-weight:800;line-height:1}
+
+/* ── Table ────────────────────────────────────────────── */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;padding:9px 14px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gray);border-bottom:1px solid var(--border)}
+.tbl td{padding:13px 14px;border-bottom:1px solid var(--border);font-size:13.5px;vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td:first-child{font-weight:600;color:var(--white)}
+
+/* ── Row item ─────────────────────────────────────────── */
+.row-item{display:flex;align-items:flex-start;gap:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:15px 18px;margin-bottom:10px}
+.row-item:last-child{margin-bottom:0}
+
+/* ── Responsive ───────────────────────────────────────── */
+@media(max-width:768px){.g3{grid-template-columns:repeat(2,1fr)}.g4{grid-template-columns:repeat(2,1fr)}.slide{padding:28px 24px 80px}}
+@media(max-width:500px){.g2,.g3,.g4{grid-template-columns:1fr}.slide{padding:20px 18px 80px}}
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+<!-- ══ SLIDE 1 · Cover ═══════════════════════════════════════════════════════ -->
+<div class="slide s1 active" id="s1">
+  <div style="text-align:center;max-width:680px">
+    <div class="hbadge">⚡ Internal Productivity Tool · Miracle</div>
+    <div style="font-size:68px;margin-bottom:6px">🏆</div>
+    <h1 style="margin-bottom:14px">Kudos<span class="acc">App</span></h1>
+    <p style="font-size:19px;color:var(--white);font-weight:500;margin-bottom:6px">Team Intelligence Platform</p>
+    <p style="margin-bottom:30px;font-size:15px">Microsoft Practice · 50+ members Dev and QA team</p>
+    <div class="div" style="margin:0 auto 28px"></div>
+    <p style="font-size:18px;color:var(--white);line-height:1.8">
+      <span class="grn">Zero manual follow-ups.</span>&nbsp;&nbsp;
+      <span class="acc">Automated weekly reports.</span><br>
+      Every assignment tracked. Every deadline visible.
+    </p>
+  </div>
+</div>
+
+<!-- ══ SLIDE 2 · The Problem ═════════════════════════════════════════════════ -->
+<div class="slide s2" id="s2">
+  <div style="max-width:920px;width:100%">
+    <div class="tag">The Challenge</div>
+    <h2 style="margin-bottom:8px">Where does the manager's time <span class="red">go?</span></h2>
+    <p style="margin-bottom:30px">Three recurring drains that compound every single week.</p>
+    <div class="grid g3">
+      <div class="card" style="border-color:rgba(239,68,68,.3)">
+        <div class="ci">📬</div>
+        <h3 class="red" style="margin-bottom:8px">Manual Follow-ups</h3>
+        <p style="margin-bottom:16px">Daily Cliq messages asking "Did you submit?", "What's the ticket status?", "Is this blocked?" — repeating every day.</p>
+        <div class="stat red">~2 hrs</div>
+        <div style="font-size:12px;color:var(--gray);margin-top:4px">per day chasing status</div>
+      </div>
+      <div class="card" style="border-color:rgba(245,158,11,.3)">
+        <div class="ci">📋</div>
+        <h3 class="org" style="margin-bottom:8px">Missed Assignments</h3>
+        <p style="margin-bottom:16px">Action items from meetings buried in chat history. No structured reminder. No escalation path. Things slip unnoticed.</p>
+        <div class="stat org">30%</div>
+        <div style="font-size:12px;color:var(--gray);margin-top:4px">of meeting action items missed without a tracker</div>
+      </div>
+      <div class="card" style="border-color:rgba(96,165,250,.3)">
+        <div class="ci">📊</div>
+        <h3 class="acc" style="margin-bottom:8px">Manual Reports</h3>
+        <p style="margin-bottom:16px">Every Friday afternoon: copy-pasting from Cliq threads, DMs, and emails into a weekly status report. Error-prone, repetitive.</p>
+        <div class="stat acc">3–4 hrs</div>
+        <div style="font-size:12px;color:var(--gray);margin-top:4px">every Friday building the report manually</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 3 · The Solution ════════════════════════════════════════════════ -->
+<div class="slide s3" id="s3">
+  <div style="max-width:920px;width:100%;text-align:center">
+    <div class="tag">The Solution</div>
+    <h2 style="margin-bottom:14px">One platform. <span class="acc">Everything tracked.</span><br>Nothing chased manually.</h2>
+    <div class="div" style="margin:0 auto 28px"></div>
+    <div class="grid g3" style="text-align:left">
+      <div class="card">
+        <div class="ci">⏰</div>
+        <h3 class="grn" style="margin-bottom:8px">Automated Reminders</h3>
+        <p>5 PM Cliq DM to anyone who hasn't submitted their daily update. Monday action item reminders to assignees. Wednesday escalation to manager if still open.</p>
+      </div>
+      <div class="card">
+        <div class="ci">📈</div>
+        <h3 class="acc" style="margin-bottom:8px">Live Compliance View</h3>
+        <p>Real-time heatmap: who submitted, who didn't, which tickets are blocked. 10 AM digest to manager every morning with participation % and pending validations.</p>
+      </div>
+      <div class="card">
+        <div class="ci">🤖</div>
+        <h3 class="org" style="margin-bottom:8px">Report Automation</h3>
+        <p>Weekly report pre-populated every Friday from team's own submissions. Monthly and quarterly reports assembled on schedule, emailed to HR automatically.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 4 · 7 Pillars ═══════════════════════════════════════════════════ -->
+<div class="slide s4" id="s4">
+  <div style="max-width:1000px;width:100%">
+    <div class="tag">What It Tracks</div>
+    <h2 style="margin-bottom:22px">7 pillars of team intelligence</h2>
+    <div class="grid g4" style="gap:11px">
+      <div class="card" style="padding:18px">
+        <div style="font-size:22px;margin-bottom:8px">📝</div>
+        <h3 style="font-size:14px;margin-bottom:4px">Daily Updates</h3>
+        <p style="font-size:12px">Ticket · Project · Status submitted in &lt;15 sec from mobile</p>
+      </div>
+      <div class="card" style="padding:18px">
+        <div style="font-size:22px;margin-bottom:8px">✅</div>
+        <h3 style="font-size:14px;margin-bottom:4px">Action Items</h3>
+        <p style="font-size:12px">Assigned to team members, reminded Monday, escalated Wednesday</p>
+      </div>
+      <div class="card" style="padding:18px">
+        <div style="font-size:22px;margin-bottom:8px">🏅</div>
+        <h3 style="font-size:14px;margin-bottom:4px">Achievements</h3>
+        <p style="font-size:12px">Certifications, POCs, blogs, appreciations — manager validated</p>
+      </div>
+      <div class="card" style="padding:18px">
+        <div style="font-size:22px;margin-bottom:8px">💼</div>
+        <h3 style="font-size:14px;margin-bottom:4px">Sales Pipeline</h3>
+        <p style="font-size:12px">Enquiries, engagements, enablement sessions tracked end-to-end</p>
+      </div>
+      <div class="card" style="padding:18px">
+        <div style="font-size:22px;margin-bottom:8px">🎉</div>
+        <h3 style="font-size:14px;margin-bottom:4px">Events</h3>
+        <p style="font-size:12px">Photos, location, media stored in Zoho WorkDrive automatically</p>
+      </div>
+      <div class="card" style="padding:18px">
+        <div style="font-size:22px;margin-bottom:8px">🤝</div>
+        <h3 style="font-size:14px;margin-bottom:4px">Meetings &amp; MOM</h3>
+        <p style="font-size:12px">AI extracts summary + action items from Zoho Meeting transcript</p>
+      </div>
+      <div class="card" style="padding:18px">
+        <div style="font-size:22px;margin-bottom:8px">📊</div>
+        <h3 style="font-size:14px;margin-bottom:4px">Reports</h3>
+        <p style="font-size:12px">Weekly · Monthly · Quarterly built and emailed automatically</p>
+      </div>
+      <div class="card" style="padding:18px;border-color:rgba(245,158,11,.3)">
+        <div style="font-size:22px;margin-bottom:8px">🏆</div>
+        <h3 style="font-size:14px;margin-bottom:4px;color:var(--orange)">Gamification</h3>
+        <p style="font-size:12px">Points, badges, team leaderboard — keeps engagement high</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 5 · Automation Flow ═════════════════════════════════════════════ -->
+<div class="slide s5" id="s5">
+  <div style="max-width:860px;width:100%">
+    <div class="tag">How It Runs</div>
+    <h2 style="margin-bottom:26px">Automated every day. <span class="grn">Zero manager effort.</span></h2>
+
+    <div class="row-item">
+      <div style="font-size:26px;flex-shrink:0">⏰</div>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--orange);margin-bottom:4px">5:00 PM · DAILY</div>
+        <div style="font-weight:600;font-size:15px;margin-bottom:4px">Compliance sweep → personal Cliq DM to non-submitters</div>
+        <p style="font-size:13px">System checks who hasn't logged a daily update → sends individual reminder. Max 2 reminders/person/day enforced automatically.</p>
+      </div>
+      <div class="pill po">Employee</div>
+    </div>
+
+    <div class="row-item">
+      <div style="font-size:26px;flex-shrink:0">📋</div>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--green);margin-bottom:4px">MONDAY · 8 AM</div>
+        <div style="font-weight:600;font-size:15px;margin-bottom:4px">Action item reminders → each assignee's Cliq DM</div>
+        <p style="font-size:13px">All open items grouped per person — one DM listing their tasks with priority and due date. No separate tool needed.</p>
+      </div>
+      <div class="pill pg">Employee</div>
+    </div>
+
+    <div class="row-item" style="border-color:rgba(239,68,68,.25)">
+      <div style="font-size:26px;flex-shrink:0">🚨</div>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--red);margin-bottom:4px">WEDNESDAY · 8 AM</div>
+        <div style="font-weight:600;font-size:15px;margin-bottom:4px">Escalation → manager's Cliq DM (items still open after Monday)</div>
+        <p style="font-size:13px">Manager receives one message: overdue items listed by team member, priority, and days overdue. No manual check needed.</p>
+      </div>
+      <div class="pill pr">Manager</div>
+    </div>
+
+    <div class="row-item">
+      <div style="font-size:26px;flex-shrink:0">📊</div>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--blue-lt);margin-bottom:4px">FRIDAY · 6 PM</div>
+        <div style="font-weight:600;font-size:15px;margin-bottom:4px">Weekly report pre-built → manager reviews, adds notes, submits</div>
+        <p style="font-size:13px">All team submissions aggregated automatically. Manager adds notes section only. One click submits and emails report to HR.</p>
+      </div>
+      <div class="pill pb">Manager</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 6 · Build Status ════════════════════════════════════════════════ -->
+<div class="slide s6" id="s6">
+  <div style="max-width:820px;width:100%">
+    <div class="tag">Build Status</div>
+    <h2 style="margin-bottom:8px">Platform is <span class="org">80% developed</span> and awaiting integration details.</h2>
+    <p style="margin-bottom:28px">Built on .NET 9 + SQL Server. All Zoho integration points coded and wired — pending credentials only.</p>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div class="pill pg">✓ Completed</div>
+        <div style="font-weight:600;flex:1">SQL Server — 23 entity tables, full data persistence, EF Core migrations ready</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div class="pill pg">✓ Completed</div>
+        <div style="font-weight:600;flex:1">JWT Auth + Zoho SSO stub — role-based access (Employee / Manager / Admin / HR)</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div class="pill pg">✓ Completed</div>
+        <div style="font-weight:600;flex:1">All 7 tracking modules — daily updates, tasks, achievements, sales, events, meetings, reports</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div class="pill pg">✓ Completed</div>
+        <div style="font-weight:600;flex:1">Action items — assigned, Monday reminders, Wednesday escalation (background service ready)</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div class="pill pg">✓ Completed</div>
+        <div style="font-weight:600;flex:1">Zoho Cliq integration — channel webhook + per-user bot DM, fully coded and compiled</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div class="pill pg">✓ Completed</div>
+        <div style="font-weight:600;flex:1">Gamification — points (+5 daily, +2 vote, +10 achievement), badges, team leaderboard</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0">
+        <div class="pill po">⏳ Awaiting</div>
+        <div style="font-weight:600;flex:1;color:var(--orange)">Zoho integration credentials — all automation activates the moment config values are provided. No further coding required.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 7 · The Ask ══════════════════════════════════════════════════════ -->
+<div class="slide s7" id="s7">
+  <div style="max-width:980px;width:100%">
+    <div class="tag">What We Need</div>
+    <h2 style="margin-bottom:8px">4 approvals unlock <span class="grn">full automation.</span></h2>
+    <p style="margin-bottom:22px">Code is written and compiled. Each row below is a config value — not a new development project.</p>
+
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th style="width:25%">Access Needed</th>
+          <th style="width:32%">What It Unlocks</th>
+          <th style="width:28%">How to Get It</th>
+          <th style="width:15%">IT Effort</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            Cliq Incoming Webhook URL<br>
+            <span style="font-size:12px;color:var(--gray);font-weight:400">Channel-level broadcast</span>
+          </td>
+          <td><p style="font-size:13px">Team-wide compliance alerts &amp; 2 PM daily digest to manager</p></td>
+          <td><p style="font-size:13px">Zoho Cliq → Bots → Incoming Webhook → Copy URL</p></td>
+          <td><span class="pill pg">5 min</span></td>
+        </tr>
+        <tr>
+          <td>
+            Cliq Bot + OAuth Token<br>
+            <span style="font-size:12px;color:var(--gray);font-weight:400">Per-user direct messages</span>
+          </td>
+          <td><p style="font-size:13px">Individual 5 PM reminders, Monday action item DMs, Wednesday manager escalations</p></td>
+          <td><p style="font-size:13px">Zoho API Console → Create Bot → OAuth credentials</p></td>
+          <td><span class="pill po">30 min</span></td>
+        </tr>
+        <tr>
+          <td>
+            Zoho Mail API<br>
+            <span style="font-size:12px;color:var(--gray);font-weight:400">Account ID + OAuth App</span>
+          </td>
+          <td><p style="font-size:13px">Auto-email finalized weekly/monthly reports to HR and leadership on submit</p></td>
+          <td><p style="font-size:13px">Zoho Mail → Settings → Developer Space → OAuth App</p></td>
+          <td><span class="pill po">1 hr</span></td>
+        </tr>
+        <tr>
+          <td>
+            WorkDrive Folder Access<br>
+            <span style="font-size:12px;color:var(--gray);font-weight:400">Team folder + API token</span>
+          </td>
+          <td><p style="font-size:13px">Achievement proof documents and event photos stored in team's existing WorkDrive</p></td>
+          <td><p style="font-size:13px">Zoho WorkDrive → Team folder → Share → API access grant</p></td>
+          <td><span class="pill po">1 hr</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top:14px;font-size:12px">Total IT effort: ~2.5 hours · Zero additional Zoho license cost · Uses your existing Zoho org · Revocable anytime from Zoho console</p>
+  </div>
+</div>
+
+<!-- ══ SLIDE 8 · ROI ══════════════════════════════════════════════════════════ -->
+<div class="slide s8" id="s8">
+  <div style="max-width:920px;width:100%;text-align:center">
+    <div class="tag">Expected Outcomes</div>
+    <h2 style="margin-bottom:28px">What the <span class="org">Microsoft Practice</span> team gains</h2>
+    <div class="grid g4" style="text-align:left">
+      <div class="card">
+        <div class="stat grn" style="margin-bottom:6px">0</div>
+        <div style="font-size:13px;color:var(--gray)">manual follow-up messages per day</div>
+        <div style="width:36px;height:2px;background:var(--green);border-radius:2px;margin:12px 0"></div>
+        <p style="font-size:12px">System sends all reminders automatically at 5 PM — manager never has to ask again</p>
+      </div>
+      <div class="card">
+        <div class="stat acc" style="margin-bottom:6px">3 hrs</div>
+        <div style="font-size:13px;color:var(--gray)">reclaimed every Friday</div>
+        <div style="width:36px;height:2px;background:var(--blue);border-radius:2px;margin:12px 0"></div>
+        <p style="font-size:12px">Weekly report pre-built from submissions — manager reviews and approves, nothing more</p>
+      </div>
+      <div class="card">
+        <div class="stat org" style="margin-bottom:6px">100%</div>
+        <div style="font-size:13px;color:var(--gray)">action item visibility</div>
+        <div style="width:36px;height:2px;background:var(--orange);border-radius:2px;margin:12px 0"></div>
+        <p style="font-size:12px">Every assigned item tracked from creation to completion with escalation if overdue</p>
+      </div>
+      <div class="card">
+        <div class="stat pur" style="margin-bottom:6px">2 PM</div>
+        <div style="font-size:13px;color:var(--gray)">daily intelligence digest</div>
+        <div style="width:36px;height:2px;background:var(--purple);border-radius:2px;margin:12px 0"></div>
+        <p style="font-size:12px">Participation %, blocked tickets, pending validations — delivered every afternoon without asking</p>
+      </div>
+    </div>
+    <div style="margin-top:22px;padding:16px 24px;background:var(--card);border:1px solid var(--border);border-radius:12px;text-align:left;display:flex;align-items:center;gap:16px">
+      <div style="font-size:28px">💡</div>
+      <p style="font-size:14px;color:var(--white)">Estimated time saved: <strong>~15 manager hours/week</strong> — 3 hrs on reports + ~2 hrs/day on follow-ups × 5 days, returned to delivery work.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 9 · Roadmap ══════════════════════════════════════════════════════ -->
+<div class="slide s9" id="s9">
+  <div style="max-width:860px;width:100%">
+    <div class="tag">Next 30 Days</div>
+    <h2 style="margin-bottom:26px">Credentials received → <span class="grn">full automation in 3 weeks</span></h2>
+    <div class="grid g3" style="align-items:start">
+      <div class="card" style="border-color:rgba(16,185,129,.3)">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--green);margin-bottom:14px">WEEK 1 · Day of approval</div>
+        <ul class="cl">
+          <li><span class="ico">🔔</span><span>5 PM daily reminders to non-submitters go live</span></li>
+          <li><span class="ico">📊</span><span>2 PM compliance digest to manager — automated</span></li>
+          <li><span class="ico">✅</span><span>Monday/Wednesday action item reminder cycle active</span></li>
+          <li><span class="ico">📈</span><span>Manager dashboard with participation heatmap</span></li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(96,165,250,.3)">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--blue-lt);margin-bottom:14px">WEEK 2–3</div>
+        <ul class="cl">
+          <li><span class="ico">📧</span><span>Reports auto-emailed to HR on manager submit</span></li>
+          <li><span class="ico">☁️</span><span>Achievement proofs and event photos → WorkDrive</span></li>
+          <li><span class="ico">📅</span><span>Monthly report auto-assembled on last day of month</span></li>
+          <li><span class="ico">📥</span><span>Smart inbox task capture from Zoho Mail &amp; Cliq</span></li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(245,158,11,.3)">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--orange);margin-bottom:14px">WEEK 4+</div>
+        <ul class="cl">
+          <li><span class="ico">📈</span><span>Team health charts: billing type, participation trends</span></li>
+          <li><span class="ico">📋</span><span>XLSX + PPTX export for leadership presentations</span></li>
+          <li><span class="ico">🤖</span><span>AI MOM extraction from Zoho Meeting transcripts</span></li>
+          <li><span class="ico">🧠</span><span>AI weekly narrative: "42/50 submitted, 3 certs achieved"</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 10 · Call to Action ═════════════════════════════════════════════ -->
+<div class="slide s10" id="s10">
+  <div style="max-width:720px;text-align:center">
+    <div style="font-size:60px;margin-bottom:14px">🚀</div>
+    <div class="tag">One Approval Away</div>
+    <h2 style="margin-bottom:14px">Platform built.<br><span class="grn">Awaiting Zoho access.</span></h2>
+    <div class="div" style="margin:14px auto 22px"></div>
+    <p style="font-size:16px;margin-bottom:28px">KudosApp is running in production today. Approving Zoho API access is the single action that converts <strong style="color:var(--white)">manual management into automated intelligence</strong> for the Microsoft Practice team.</p>
+
+    <div class="grid g2" style="text-align:left;margin-bottom:24px">
+      <div class="card" style="border-color:rgba(16,185,129,.3)">
+        <h3 class="grn" style="margin-bottom:14px">Approve (2.5 hrs IT effort)</h3>
+        <ul class="cl" style="font-size:13px">
+          <li><span class="ico">✅</span><span>Zoho Cliq Incoming Webhook URL</span></li>
+          <li><span class="ico">✅</span><span>Zoho Cliq Bot + OAuth Token</span></li>
+          <li><span class="ico">✅</span><span>Zoho Mail API credentials</span></li>
+          <li><span class="ico">✅</span><span>Zoho WorkDrive team folder access</span></li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(96,165,250,.3)">
+        <h3 class="acc" style="margin-bottom:14px">Why it's safe to approve</h3>
+        <ul class="cl" style="font-size:13px">
+          <li><span class="ico">🔒</span><span>Uses your existing Zoho org — no new vendor</span></li>
+          <li><span class="ico">💰</span><span>Zero additional Zoho license cost</span></li>
+          <li><span class="ico">🔄</span><span>Revocable anytime from Zoho Admin Console</span></li>
+          <li><span class="ico">🏢</span><span>Data stays within Miracle's Zoho workspace</span></li>
+        </ul>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--gray)">Built by Prasad &nbsp;·&nbsp; Miracle Software Systems &nbsp;·&nbsp; Microsoft Practice &nbsp;·&nbsp; KudosApp v1.0</p>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- ── Navigation ─────────────────────────────────────────────────────────── -->
+<div class="nav">
+  <button class="nbtn" id="pb" onclick="go(-1)" disabled>‹</button>
+  <div class="dots" id="dots"></div>
+  <button class="nbtn" id="nb" onclick="go(1)">›</button>
+  <span class="ctr" id="ctr">1 / 10</span>
+</div>
+
+<script>
+const N = 10;
+let cur = 1, busy = false;
+
+// Build dots
+const dotsEl = document.getElementById('dots');
+for (let i = 1; i <= N; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 1 ? ' on' : '');
+  d.onclick = () => jump(i);
+  dotsEl.appendChild(d);
+}
+
+function slide(n) { return document.getElementById('s' + n); }
+
+function jump(n) {
+  if (n < 1 || n > N || n === cur || busy) return;
+  busy = true;
+  const dir = n > cur ? 1 : -1;
+  const leaving = slide(cur);
+  const entering = slide(n);
+
+  // Prepare entering slide off-screen
+  entering.style.transition = 'none';
+  entering.style.opacity = '0';
+  entering.style.transform = `translateX(${dir * 80}px)`;
+  entering.style.pointerEvents = 'none';
+  entering.classList.add('active');
+  entering.classList.remove('out-left', 'out-right');
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    // Animate leaving slide out
+    leaving.style.transition = '';
+    leaving.classList.add(dir > 0 ? 'out-left' : 'out-right');
+    leaving.classList.remove('active');
+
+    // Animate entering slide in
+    entering.style.transition = '';
+    entering.style.opacity = '';
+    entering.style.transform = '';
+    entering.style.pointerEvents = '';
+
+    cur = n;
+    updateUI();
+    setTimeout(() => {
+      leaving.classList.remove('out-left', 'out-right');
+      leaving.style.cssText = '';
+      busy = false;
+    }, 420);
+  }));
+}
+
+function go(dir) { jump(cur + dir); }
+
+function updateUI() {
+  document.getElementById('ctr').textContent = `${cur} / ${N}`;
+  document.getElementById('pb').disabled = cur === 1;
+  document.getElementById('nb').disabled = cur === N;
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('on', i === cur - 1));
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(1); }
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')  { e.preventDefault(); go(-1); }
+});
+
+// Touch swipe
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+document.addEventListener('touchend', e => {
+  const dx = tx - e.changedTouches[0].clientX;
+  if (Math.abs(dx) > 48) go(dx > 0 ? 1 : -1);
+});
+</script>
+</body>
+</html>
