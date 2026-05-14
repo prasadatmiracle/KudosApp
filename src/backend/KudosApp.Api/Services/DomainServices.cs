@@ -157,6 +157,15 @@ public sealed class ReportService(AppDbContext db) : IReportService
             return XlsxExportService.Export(report);
         }
 
+        // pptx → PowerPoint deck (Monthly reports only)
+        if (format.Equals("pptx", StringComparison.OrdinalIgnoreCase)
+            || format.Equals("powerpoint", StringComparison.OrdinalIgnoreCase))
+        {
+            if (report.ReportType != ReportType.Monthly)
+                throw new InvalidOperationException("PPTX export is only available for Monthly reports.");
+            return PptxExportService.Export(report);
+        }
+
         // txt fallback (kept for debugging / API consumers that want raw JSON)
         var fileName = $"{report.ReportType}-{report.StartDate:yyyyMMdd}-{report.EndDate:yyyyMMdd}.txt";
         var sb = new StringBuilder();
