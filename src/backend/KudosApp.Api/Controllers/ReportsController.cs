@@ -155,4 +155,19 @@ public sealed class ReportsController(
         auditService.Write(User.CurrentUserId(), "EXPORT_REPORT", nameof(ReportRecord), report.ReportRecordId, $"{{\"format\":\"{format}\"}}");
         return Ok(artifact);
     }
+
+    // P15: AI weekly narrative — generates a human-readable summary from the report payload.
+    // Stub implementation derives the narrative from structured data.
+    // Replace NarrativeService.Generate() with Azure OpenAI call when keys are available.
+    [HttpGet("{reportRecordId:int}/narrative")]
+    [Authorize(Roles = "Manager,Admin,Hr")]
+    public ActionResult<object> GetNarrative(int reportRecordId)
+    {
+        var report = db.Reports.SingleOrDefault(x => x.ReportRecordId == reportRecordId);
+        if (report is null) return NotFound();
+        if (User.CurrentRole() == AppRole.Hr && report.Status != ReportStatus.Locked) return Forbid();
+
+        var narrative = NarrativeService.Generate(report, db);
+        return Ok(new { reportRecordId, narrative, generatedAt = DateTime.UtcNow, isAiGenerated = false });
+    }
 }

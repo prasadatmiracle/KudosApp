@@ -349,3 +349,73 @@ public sealed class ActionItem
     public DateTime? UpdatedAtUtc { get; set; }
     public DateTime? CompletedAtUtc { get; set; }
 }
+
+// ── P9B: Smart Inbox Task Capture ─────────────────────────────────────────
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum InboxTaskState
+{
+    PendingConfirmation,
+    Active,
+    InProgress,
+    Completed,
+    Dismissed
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum InboxTaskCategory
+{
+    Development,
+    FollowUp,
+    StatusUpdate,
+    ReportGeneration,
+    Support,
+    Communicate,
+    Custom
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum InboxTaskPriority { Low, Medium, High, Critical }
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum InboxTaskWeeklyCategory { RoutineTask, Accomplishment, Achievement, Other }
+
+public sealed class InboxTask
+{
+    public int InboxTaskId { get; set; }
+    public int UserId { get; set; }
+    public string SourceChannel { get; set; } = string.Empty;   // ZohoMail | ZohoCliq
+    public string SourceSender { get; set; } = string.Empty;
+    public string SourceMessageId { get; set; } = string.Empty;
+    public string SourcePreview { get; set; } = string.Empty;
+    public string ExtractedTaskText { get; set; } = string.Empty;
+    public string DeduplicationHash { get; set; } = string.Empty;
+    public bool IsPrivate { get; set; } = true;
+    public InboxTaskCategory Category { get; set; } = InboxTaskCategory.FollowUp;
+    public string? CustomCategoryName { get; set; }
+    public InboxTaskPriority Priority { get; set; } = InboxTaskPriority.Medium;
+    public InboxTaskState State { get; set; } = InboxTaskState.PendingConfirmation;
+    public DateTime? DueAtUtc { get; set; }
+    public DateTime? CompletedAtUtc { get; set; }
+    public bool IncludeInWeeklyReport { get; set; } = false;
+    public InboxTaskWeeklyCategory? WeeklyReportCategory { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAtUtc { get; set; }
+}
+
+public sealed class InboxTaskDependency
+{
+    public int InboxTaskDependencyId { get; set; }
+    public int InboxTaskId { get; set; }
+    public int DependentUserId { get; set; }
+    public DateTime? NotifiedCompletedAtUtc { get; set; }
+}
+
+public sealed class InboxTaskReminder
+{
+    public int InboxTaskReminderId { get; set; }
+    public int InboxTaskId { get; set; }
+    public DateTime RemindAtUtc { get; set; }
+    public string Channel { get; set; } = "InApp";   // Cliq | InApp | Both
+    public bool IsSent { get; set; } = false;
+}

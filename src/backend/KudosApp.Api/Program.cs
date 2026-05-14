@@ -103,6 +103,9 @@ builder.Services.AddHostedService<MonthlyReportHostedService>();
 builder.Services.AddScoped<ISmartNudgeService, SmartNudgeService>();
 builder.Services.AddHostedService<SmartNudgeHostedService>();
 
+// P9B — Smart Inbox Task Capture
+builder.Services.AddScoped<IInboxTaskService, InboxTaskService>();
+
 // Background services
 builder.Services.AddHostedService<ActionItemReminderHostedService>();
 
