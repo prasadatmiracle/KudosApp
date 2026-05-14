@@ -83,6 +83,18 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IUserContext, UserContext>();
 builder.Services.AddScoped<IActionItemService, ActionItemService>();
 
+// P4 — daily update reminder (5 PM IST)
+builder.Services.AddScoped<IDailyReminderService, DailyReminderService>();
+builder.Services.AddHostedService<DailyReminderHostedService>();
+
+// P5 — auto weekly report draft (Friday 6 PM IST)
+builder.Services.AddScoped<IWeeklyReportSchedulerService, WeeklyReportSchedulerService>();
+builder.Services.AddHostedService<WeeklyReportHostedService>();
+
+// P6 — compliance digest to manager (2 PM IST)
+builder.Services.AddScoped<IComplianceDigestService, ComplianceDigestService>();
+builder.Services.AddHostedService<ComplianceDigestHostedService>();
+
 // Background services
 builder.Services.AddHostedService<ActionItemReminderHostedService>();
 

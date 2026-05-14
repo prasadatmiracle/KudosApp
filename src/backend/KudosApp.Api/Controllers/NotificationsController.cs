@@ -71,4 +71,40 @@ public sealed class NotificationsController(
         auditService.Write(actorId, "SEND_DAILY_REMINDER", "Notification", eligible.Count, $"{{\"date\":\"{date:yyyy-MM-dd}\"}}");
         return Ok(new { sent = eligible.Count });
     }
+
+    // Manual trigger for P4 daily reminder (useful outside scheduled window)
+    [HttpPost("trigger-daily-reminder")]
+    [Authorize(Roles = "Manager,Admin")]
+    public async Task<IActionResult> TriggerDailyReminder(
+        [FromServices] IDailyReminderService service,
+        CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        await service.SendDailyUpdateRemindersAsync(today, ct);
+        return Ok(new { triggered = "daily-reminder", date = today });
+    }
+
+    // Manual trigger for P5 weekly report generation
+    [HttpPost("trigger-weekly-report")]
+    [Authorize(Roles = "Manager,Admin")]
+    public async Task<IActionResult> TriggerWeeklyReport(
+        [FromServices] IWeeklyReportSchedulerService service,
+        CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        await service.GenerateWeeklyDraftsAsync(today, ct);
+        return Ok(new { triggered = "weekly-report", date = today });
+    }
+
+    // Manual trigger for P6 compliance digest
+    [HttpPost("trigger-compliance-digest")]
+    [Authorize(Roles = "Manager,Admin")]
+    public async Task<IActionResult> TriggerComplianceDigest(
+        [FromServices] IComplianceDigestService service,
+        CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        await service.SendComplianceDigestAsync(today, ct);
+        return Ok(new { triggered = "compliance-digest", date = today });
+    }
 }
