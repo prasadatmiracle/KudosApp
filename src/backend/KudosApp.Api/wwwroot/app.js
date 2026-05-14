@@ -376,7 +376,7 @@
       </div>
       <div class="small muted">${row.startDate} to ${row.endDate}</div>
       <div class="row">
-        <button class="secondary" data-action="export-report" data-id="${row.reportRecordId}">Export</button>
+        <button class="secondary" data-action="export-report" data-id="${row.reportRecordId}" title="Download as Excel (.xlsx)">Export XLSX</button>
         ${
           row.reportType === "Weekly" && row.status !== "Locked"
             ? `<button data-action="lock-weekly" data-id="${row.reportRecordId}">Lock Weekly</button>`
@@ -875,16 +875,14 @@
     }
   }
 
-  async function handleExport(reportId) {
+  async function handleExport(reportId, format = "xlsx") {
     try {
-      const artifact = await api(`/reports/${reportId}/export?format=excel`);
+      const artifact = await api(`/reports/${reportId}/export?format=${format}`);
       const binary = atob(artifact.base64Content);
       const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       const blob = new Blob([bytes], { type: artifact.contentType });
-      const url = URL.createObjectURL(blob);
+      const url  = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = artifact.fileName;
