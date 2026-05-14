@@ -99,6 +99,10 @@ builder.Services.AddHostedService<ComplianceDigestHostedService>();
 builder.Services.AddScoped<IMonthlyReportSchedulerService, MonthlyReportSchedulerService>();
 builder.Services.AddHostedService<MonthlyReportHostedService>();
 
+// P16 — smart nudges (stale enquiries, blocked streaks, pending achievements — 3:30 PM IST)
+builder.Services.AddScoped<ISmartNudgeService, SmartNudgeService>();
+builder.Services.AddHostedService<SmartNudgeHostedService>();
+
 // Background services
 builder.Services.AddHostedService<ActionItemReminderHostedService>();
 

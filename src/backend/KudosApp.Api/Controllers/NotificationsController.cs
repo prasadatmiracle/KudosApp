@@ -107,4 +107,16 @@ public sealed class NotificationsController(
         await service.SendComplianceDigestAsync(today, ct);
         return Ok(new { triggered = "compliance-digest", date = today });
     }
+
+    // Manual trigger for P16 smart nudges
+    [HttpPost("trigger-smart-nudge")]
+    [Authorize(Roles = "Manager,Admin")]
+    public async Task<IActionResult> TriggerSmartNudge(
+        [FromServices] ISmartNudgeService service,
+        CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        await service.SendNudgesAsync(today, ct);
+        return Ok(new { triggered = "smart-nudge", date = today });
+    }
 }

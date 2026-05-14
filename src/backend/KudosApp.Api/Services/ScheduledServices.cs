@@ -459,3 +459,223 @@ public sealed class MonthlyReportHostedService(
         return next - now;
     }
 }
+
+// ── P16: Smart Nudges (3:30 PM IST = 10:00 AM UTC) ───────────────────────────
+
+public sealed record StaleEnquiryNudge(int SalesEnquiryId, string ClientName, string Technology, string SalesCoordinator, int DaysOld);
+public sealed record BlockedTicketNudge(int UserId, string UserName, string TicketNumber, string ProjectCode, int BlockedDays);
+public sealed record PendingAchievementNudge(int AchievementId, int UserId, string UserName, string Title, string Category, int DaysOld);
+
+public sealed record SmartNudgeSummary(
+    IReadOnlyList<StaleEnquiryNudge> StaleEnquiries,
+    IReadOnlyList<BlockedTicketNudge> BlockedTickets,
+    IReadOnlyList<PendingAchievementNudge> PendingAchievements)
+{
+    public int TotalCount => StaleEnquiries.Count + BlockedTickets.Count + PendingAchievements.Count;
+}
+
+public interface ISmartNudgeService
+{
+    SmartNudgeSummary GetNudges(int managerUserId);
+    Task SendNudgesAsync(DateOnly today, CancellationToken ct);
+}
+
+public sealed class SmartNudgeService(
+    AppDbContext db,
+    IZohoBridge zohoBridge,
+    ILogger<SmartNudgeService> logger) : ISmartNudgeService
+{
+    private const int StaleEnquiryDays   = 7;
+    private const int BlockedStreakDays  = 3;
+    private const int PendingAchieveDays = 5;
+
+    public SmartNudgeSummary GetNudges(int managerUserId)
+    {
+        var directTeam = db.Users
+            .Where(x => x.IsActive && x.ManagerId == managerUserId)
+            .Select(x => x.UserId)
+            .ToList();
+
+        var skipLevel = db.Users
+            .Where(x => x.ManagerId.HasValue && directTeam.Contains(x.ManagerId.Value))
+            .Select(x => x.UserId)
+            .ToList();
+
+        var allVisible = directTeam.Concat(skipLevel).Append(managerUserId).Distinct().ToHashSet();
+
+        return new SmartNudgeSummary(
+            GetStaleEnquiries(allVisible),
+            GetBlockedTickets(allVisible),
+            GetPendingAchievements(allVisible));
+    }
+
+    public async Task SendNudgesAsync(DateOnly today, CancellationToken ct)
+    {
+        if (today.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) return;
+
+        var managers = db.Users
+            .Where(x => x.IsActive && (x.Role == AppRole.Manager || x.Role == AppRole.Admin))
+            .ToList();
+
+        foreach (var manager in managers)
+        {
+            var summary = GetNudges(manager.UserId);
+            if (summary.TotalCount == 0)
+            {
+                logger.LogInformation("Smart nudge: no actionable items for manager {UserId}.", manager.UserId);
+                continue;
+            }
+
+            var lines = new List<string> { $"*** Smart Nudges -- {today:dd MMM yyyy} ***", "" };
+
+            if (summary.StaleEnquiries.Count > 0)
+            {
+                lines.Add($"[STALE] {summary.StaleEnquiries.Count} sales enquiry(ies) untouched for {StaleEnquiryDays}+ days:");
+                foreach (var e in summary.StaleEnquiries.Take(5))
+                    lines.Add($"  - {e.ClientName} ({e.Technology}) -- {e.DaysOld}d old -- coord: {e.SalesCoordinator}");
+                if (summary.StaleEnquiries.Count > 5) lines.Add($"  ... and {summary.StaleEnquiries.Count - 5} more");
+                lines.Add("");
+            }
+
+            if (summary.BlockedTickets.Count > 0)
+            {
+                lines.Add($"[BLOCKED] {summary.BlockedTickets.Count} ticket(s) blocked for {BlockedStreakDays}+ days:");
+                foreach (var b in summary.BlockedTickets.Take(5))
+                    lines.Add($"  - {b.UserName}: {b.TicketNumber} ({b.ProjectCode}) -- {b.BlockedDays} days blocked");
+                if (summary.BlockedTickets.Count > 5) lines.Add($"  ... and {summary.BlockedTickets.Count - 5} more");
+                lines.Add("");
+            }
+
+            if (summary.PendingAchievements.Count > 0)
+            {
+                lines.Add($"[PENDING] {summary.PendingAchievements.Count} achievement(s) awaiting validation for {PendingAchieveDays}+ days:");
+                foreach (var a in summary.PendingAchievements.Take(5))
+                    lines.Add($"  - {a.UserName}: [{a.Category}] {a.Title} -- {a.DaysOld}d pending");
+                if (summary.PendingAchievements.Count > 5) lines.Add($"  ... and {summary.PendingAchievements.Count - 5} more");
+                lines.Add("");
+            }
+
+            lines.Add("Open KudosApp to action these items.");
+
+            await zohoBridge.SendCliqNotificationAsync(string.Join("\n", lines), [manager.Email], ct);
+            logger.LogInformation(
+                "Smart nudges sent to manager {UserId}: {Stale} stale, {Blocked} blocked, {Pending} pending.",
+                manager.UserId, summary.StaleEnquiries.Count, summary.BlockedTickets.Count, summary.PendingAchievements.Count);
+        }
+    }
+
+    private IReadOnlyList<StaleEnquiryNudge> GetStaleEnquiries(ISet<int> visibleUserIds)
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-StaleEnquiryDays);
+        return db.SalesEnquiries
+            .Where(x => x.ValidationStatus == ValidationStatus.Pending
+                        && x.Status != "Won" && x.Status != "Lost" && x.Status != "Closed"
+                        && x.CreatedAtUtc < cutoff
+                        && visibleUserIds.Contains(x.CreatedByUserId))
+            .OrderBy(x => x.CreatedAtUtc)
+            .Select(x => new StaleEnquiryNudge(
+                x.SalesEnquiryId, x.ClientName, x.Technology, x.SalesCoordinator,
+                (int)(DateTime.UtcNow - x.CreatedAtUtc).TotalDays))
+            .ToList();
+    }
+
+    private IReadOnlyList<BlockedTicketNudge> GetBlockedTickets(ISet<int> visibleUserIds)
+    {
+        var cutoff = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-10));
+
+        var grouped = db.DailyUpdates
+            .Where(x => x.Status == DailyStatus.Blocked
+                        && x.WorkDate >= cutoff
+                        && visibleUserIds.Contains(x.UserId))
+            .GroupBy(x => new { x.UserId, x.ProjectId, x.TicketNumber })
+            .Select(g => new
+            {
+                g.Key.UserId, g.Key.ProjectId, g.Key.TicketNumber,
+                BlockedDays = g.Count()
+            })
+            .Where(x => x.BlockedDays >= BlockedStreakDays)
+            .ToList();
+
+        if (grouped.Count == 0) return [];
+
+        var userIds    = grouped.Select(x => x.UserId).Distinct().ToHashSet();
+        var projectIds = grouped.Select(x => x.ProjectId).Distinct().ToHashSet();
+        var users      = db.Users.Where(x => userIds.Contains(x.UserId)).ToDictionary(x => x.UserId);
+        var projects   = db.Projects.Where(x => projectIds.Contains(x.ProjectId)).ToDictionary(x => x.ProjectId);
+
+        return grouped
+            .OrderByDescending(x => x.BlockedDays)
+            .Select(x => new BlockedTicketNudge(
+                x.UserId,
+                users.TryGetValue(x.UserId, out var u) ? u.Name : "Unknown",
+                x.TicketNumber,
+                projects.TryGetValue(x.ProjectId, out var p) ? p.ProjectCode : "?",
+                x.BlockedDays))
+            .ToList();
+    }
+
+    private IReadOnlyList<PendingAchievementNudge> GetPendingAchievements(ISet<int> visibleUserIds)
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-PendingAchieveDays);
+        var items = db.Achievements
+            .Where(x => x.ValidationStatus == ValidationStatus.Pending
+                        && x.CreatedAtUtc < cutoff
+                        && visibleUserIds.Contains(x.UserId))
+            .OrderBy(x => x.CreatedAtUtc)
+            .ToList();
+
+        if (items.Count == 0) return [];
+
+        var userIds = items.Select(x => x.UserId).Distinct().ToHashSet();
+        var users   = db.Users.Where(x => userIds.Contains(x.UserId)).ToDictionary(x => x.UserId);
+
+        return items
+            .Select(x => new PendingAchievementNudge(
+                x.AchievementId, x.UserId,
+                users.TryGetValue(x.UserId, out var u) ? u.Name : "Unknown",
+                x.Title, x.Category,
+                (int)(DateTime.UtcNow - x.CreatedAtUtc).TotalDays))
+            .ToList();
+    }
+}
+
+public sealed class SmartNudgeHostedService(
+    IServiceScopeFactory scopeFactory,
+    ILogger<SmartNudgeHostedService> logger) : BackgroundService
+{
+    // 3:30 PM IST = 10:00 AM UTC
+    private static readonly TimeSpan FireAtUtc = TimeSpan.FromHours(10);
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        logger.LogInformation("SmartNudgeHostedService started.");
+
+        while (!ct.IsCancellationRequested)
+        {
+            var delay = TimeUntilNextNudgeUtc();
+            logger.LogInformation("Smart nudge sleeping {Minutes:F0} min until 3:30 PM IST.", delay.TotalMinutes);
+            await Task.Delay(delay, ct);
+
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<ISmartNudgeService>();
+                await service.SendNudgesAsync(today, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Smart nudge job failed on {Date}.", today);
+            }
+        }
+    }
+
+    private static TimeSpan TimeUntilNextNudgeUtc()
+    {
+        var now = DateTime.UtcNow;
+        var next = now.Date.Add(FireAtUtc);
+        if (now >= next) next = next.AddDays(1);
+        return next - now;
+    }
+}
+
