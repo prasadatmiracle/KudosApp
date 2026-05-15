@@ -44,7 +44,7 @@ export function Feed() {
   if (!data || data.length === 0) {
     return (
       <Card>
-        <CardContent className="p-10 text-center text-sm text-muted-foreground">
+        <CardContent className="p-10 text-center text-sm text-on-surface-variant">
           No feed activity yet.
         </CardContent>
       </Card>
@@ -67,9 +67,9 @@ export function Feed() {
                   <Badge variant="outline" className="text-[10px] uppercase tracking-wider">{item.kind}</Badge>
                 </div>
                 {item.description && (
-                  <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{item.description}</p>
+                  <p className="mt-1 text-sm text-on-surface-variant line-clamp-2">{item.description}</p>
                 )}
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-on-surface-variant">
                   {item.authorName && <span>{item.authorName}</span>}
                   <span>{fmtDate(item.createdAtUtc, "long")}</span>
                 </div>

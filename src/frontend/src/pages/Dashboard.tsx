@@ -40,7 +40,7 @@ export function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Hero greeting */}
-      <div className="rounded-2xl bg-grad-topbar p-6 text-white shadow-glow relative overflow-hidden">
+      <div className="rounded-2xl bg-grad-primary p-6 text-on-primary shadow-glow relative overflow-hidden">
         <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
         <p className="text-sm font-medium text-white/80">{greeting()}, {user?.name?.split(" ")[0]}</p>
         <h2 className="mt-1 text-2xl font-bold tracking-tight relative">
@@ -129,7 +129,7 @@ export function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{a.title}</p>
-                    <p className="text-xs text-muted-foreground">{a.category}</p>
+                    <p className="text-xs text-on-surface-variant">{a.category}</p>
                   </div>
                   <StatusBadge status={a.validationStatus} />
                 </CardContent>
@@ -137,7 +137,7 @@ export function Dashboard() {
             ))}
           </div>
         ) : (
-          <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">
+          <Card><CardContent className="p-6 text-center text-sm text-on-surface-variant">
             No achievements yet.{" "}
             <button className="text-primary font-medium hover:underline" onClick={() => nav("/achievements")}>
               Post one →
@@ -151,7 +151,7 @@ export function Dashboard() {
 
 function SectionTitle({ icon: Icon, children }: { icon: any; children: React.ReactNode }) {
   return (
-    <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+    <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
       <Icon className="h-3.5 w-3.5" />
       <span>{children}</span>
     </div>

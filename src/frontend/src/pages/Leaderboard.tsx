@@ -34,7 +34,7 @@ export function Leaderboard() {
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
         </div>
       ) : !data || data.length === 0 ? (
-        <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">No leaderboard data yet.</CardContent></Card>
+        <Card><CardContent className="p-8 text-center text-sm text-on-surface-variant">No leaderboard data yet.</CardContent></Card>
       ) : (
         <div className="space-y-2">
           {data.map((row) => {
@@ -54,7 +54,7 @@ export function Leaderboard() {
                   <div className="flex-1 min-w-0">
                     <p className={cn("font-semibold truncate", isMe && "text-primary")}>{row.name}{isMe && " (you)"}</p>
                   </div>
-                  <p className="text-xl font-bold tracking-tight bg-grad-brand bg-clip-text text-transparent tabular-nums">
+                  <p className="text-xl font-bold tracking-tight bg-grad-primary bg-clip-text text-transparent tabular-nums">
                     {row.points}
                   </p>
                 </CardContent>
@@ -71,5 +71,5 @@ function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <Crown className="h-6 w-6 text-amber-500" />;
   if (rank === 2) return <Medal className="h-6 w-6 text-slate-400" />;
   if (rank === 3) return <Award className="h-6 w-6 text-amber-700" />;
-  return <span className="text-sm font-bold text-muted-foreground">#{rank}</span>;
+  return <span className="text-sm font-bold text-on-surface-variant">#{rank}</span>;
 }
