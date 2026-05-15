@@ -425,8 +425,8 @@
                 </div>
                 <span class="chip" style="font-size:11px">${escapeHtml(row.entityType)}</span>
               </div>
-              ${row.description ? `<div class="small" style="color:#334e68">${escapeHtml(row.description)}</div>` : ""}
-              ${row.proofUrl ? `<a href="${escapeHtml(row.proofUrl)}" target="_blank" rel="noopener" class="small" style="color:#1e6ea7">View proof ↗</a>` : ""}
+              ${row.description ? `<div class="small" style="color:var(--text)">${escapeHtml(row.description)}</div>` : ""}
+              ${row.proofUrl ? `<a href="${escapeHtml(row.proofUrl)}" target="_blank" rel="noopener" class="small" style="color:var(--primary)">View proof ↗</a>` : ""}
               <div class="small muted">Submitted ${new Date(row.createdAtUtc).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</div>
               <label>Remarks<textarea data-field="remarks" placeholder="Optional remarks" rows="2"></textarea></label>
               <div class="row">
@@ -524,7 +524,7 @@
 
         <div class="section-title">Active Tasks (${active.length})</div>
         ${active.length === 0
-          ? `<div class="card" style="color:#51697f;text-align:center;padding:16px">No active inbox tasks</div>`
+          ? `<div class="card" style="color:var(--text-muted);text-align:center;padding:16px">No active inbox tasks</div>`
           : active.map(t => inboxCard(t, "active")).join("")}
 
         ${completed.length > 0 ? `
@@ -562,7 +562,7 @@
         <span class="chip ${pColor}">${escapeHtml(t.priority)}</span>
         <span class="chip ${sColor}">${escapeHtml(t.state)}</span>
       </div>
-      <div style="font-size:14px;font-weight:600;color:#143049">${escapeHtml(t.extractedTaskText)}</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text)">${escapeHtml(t.extractedTaskText)}</div>
       <div class="row">
         <span class="small muted">${escapeHtml(t.sourceChannel)} · ${escapeHtml(t.sourceSender)}</span>
         ${due}
@@ -581,8 +581,8 @@
     try {
       const h = await api("/dashboard/team-health");
 
-      const engagementColor = h.engagementScore >= 80 ? "#16a34a"
-                            : h.engagementScore >= 60 ? "#ea580c" : "#dc2626";
+      const engagementColor = h.engagementScore >= 80 ? "var(--success)"
+                            : h.engagementScore >= 60 ? "var(--warning)" : "var(--danger)";
 
       const maxTrend = Math.max(...(h.weeklyTrend.map(t => t.count)), 1);
 
@@ -706,7 +706,7 @@
       // Billing type donut
       const billingLabels = h.billingBreakdown.map(b => b.type);
       const billingData   = h.billingBreakdown.map(b => b.count);
-      const billingColors = ["#1e6ea7","#16a34a","#ea580c","#7c3aed","#0891b2"];
+      const billingColors = ["var(--primary)","var(--success)","var(--warning)","var(--accent)","var(--cyan)"];
 
       billingChart = new Chart(document.getElementById("billingChart"), {
         type: "doughnut",
@@ -757,7 +757,7 @@
     const nudgeContainer = document.createElement("div");
     nudgeContainer.id = "nudgeFeed";
     nudgeContainer.innerHTML = `<div class="section-title" style="margin-top:18px">Smart Nudges</div>
-      <div class="card" style="text-align:center;padding:16px;color:#51697f;font-size:13px">Loading nudges…</div>`;
+      <div class="card" style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px">Loading nudges…</div>`;
     content.querySelector(".stack").appendChild(nudgeContainer);
 
     try {
@@ -917,10 +917,10 @@
           </div>
           <div class="heatmap-legend">
             <div class="heatmap-legend-item">
-              <div class="heatmap-legend-box" style="background:#16a34a"></div>Submitted
+              <div class="heatmap-legend-box" style="background:var(--success)"></div>Submitted
             </div>
             <div class="heatmap-legend-item">
-              <div class="heatmap-legend-box" style="background:#dc2626"></div>Blocked
+              <div class="heatmap-legend-box" style="background:var(--danger)"></div>Blocked
             </div>
             <div class="heatmap-legend-item">
               <div class="heatmap-legend-box" style="background:#e2e8f0"></div>Missing
@@ -964,7 +964,7 @@
         </form>
 
         <div class="section-title">Team Achievements</div>
-        <div id="achFeed"><div class="card" style="text-align:center;padding:16px;color:#51697f">Loading…</div></div>
+        <div id="achFeed"><div class="card" style="text-align:center;padding:16px;color:var(--text-muted)">Loading…</div></div>
       </div>`;
 
     document.getElementById("achForm").addEventListener("submit", async (e) => {
@@ -1057,7 +1057,7 @@
       <div class="stack">
         ${managerSection}
         <div class="section-title">Upcoming &amp; Recent Events</div>
-        <div id="evtFeed"><div class="card" style="text-align:center;padding:16px;color:#51697f">Loading…</div></div>
+        <div id="evtFeed"><div class="card" style="text-align:center;padding:16px;color:var(--text-muted)">Loading…</div></div>
       </div>`;
 
     if (isManager()) {
@@ -1167,7 +1167,7 @@
   async function renderProfile() {
     const u = state.user || {};
     const initial = (u.name || "?")[0].toUpperCase();
-    content.innerHTML = `<div class="card" style="text-align:center;padding:24px;color:#51697f">Loading profile…</div>`;
+    content.innerHTML = `<div class="card" style="text-align:center;padding:24px;color:var(--text-muted)">Loading profile…</div>`;
     try {
       const [perf, myAch] = await Promise.all([
         api("/performance/my"),
@@ -1197,7 +1197,7 @@
             <h2 style="margin:12px 0 4px">${escapeHtml(u.name || "")}</h2>
             <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px">
               <span class="chip ${roleColor}">${escapeHtml(u.role || "")}</span>
-              <span class="chip" style="background:#edf3f8;color:#334e68">${escapeHtml(u.email || "")}</span>
+              <span class="chip" style="background:var(--surface-2);color:var(--text)">${escapeHtml(u.email || "")}</span>
             </div>
           </div>
 
@@ -1600,11 +1600,11 @@
               const toast = document.createElement("div");
               toast.style.cssText =
                 "position:fixed;bottom:80px;left:50%;transform:translateX(-50%);" +
-                "background:#17324a;color:#fff;padding:10px 18px;border-radius:8px;" +
+                "background:var(--primary-dark);color:#fff;padding:10px 18px;border-radius:8px;" +
                 "font-size:13px;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,.2)";
               toast.innerHTML =
                 'Update available. <button onclick="location.reload()" ' +
-                'style="background:#1e6ea7;border:none;color:#fff;border-radius:6px;' +
+                'style="background:var(--primary);border:none;color:#fff;border-radius:6px;' +
                 'padding:4px 10px;margin-left:8px;cursor:pointer;font:inherit">Refresh</button>';
               document.body.appendChild(toast);
               setTimeout(() => toast.remove(), 12000);
@@ -1616,10 +1616,10 @@
 
     // Notify user when they go offline / come back online
     window.addEventListener("offline", () => {
-      showConnectionBanner("You are offline — changes will sync when reconnected.", "#ea580c");
+      showConnectionBanner("You are offline — changes will sync when reconnected.", "var(--warning)");
     });
     window.addEventListener("online", () => {
-      showConnectionBanner("Back online.", "#16a34a");
+      showConnectionBanner("Back online.", "var(--success)");
       loadNudgeCounts();
     });
   }
