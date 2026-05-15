@@ -102,9 +102,13 @@
 
   function setNavActive() {
     document.querySelectorAll(".bottom-nav button").forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.view === state.view);
+      const isActive = btn.dataset.view === state.view;
+      btn.classList.toggle("active", isActive);
       if (btn.classList.contains("mgr-only")) {
         btn.classList.toggle("hidden", !isManager());
+      }
+      if (isActive) {
+        btn.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
       }
     });
   }
