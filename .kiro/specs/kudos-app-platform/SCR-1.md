@@ -26,6 +26,12 @@ nudge cascades) and data model additions (C26 peer endorsement) remain to be
 implemented; the UI titles and palette are now consistent with the new tone so
 that those backend changes will surface in the right framing when wired.
 
+> **Tracking:** All remaining SCR-1 items (and other deferred work) are listed
+> in [`WISHLIST.md`](./WISHLIST.md) with status, owner notes, and the commit
+> hash of items already shipped. **Update WISHLIST.md** rather than editing
+> this SCR — this document is a frozen change request; the wishlist is the
+> living tracker.
+
 ---
 
 ## Part 1 — Accuracy Corrections (from suggestions.md)

@@ -8,12 +8,10 @@ import { cn, initials } from "@/lib/utils";
 type Range = "30" | "60" | "90";
 const RANGE_LABEL: Record<Range, string> = { "30": "Last 30 Days", "60": "Last 60 Days", "90": "Last 90 Days" };
 
-interface HeatmapDay { date: string; submitted: boolean; status?: string }
-interface HeatmapRow {
-  userId: number;
-  name: string;
-  days: HeatmapDay[];
-}
+interface HeatmapDay { date: string; submitted: boolean; status?: string; isWeekend?: boolean }
+interface HeatmapRow { userId: number; name: string; days: HeatmapDay[]; }
+// Backend wraps rows: { dates: string[], users: HeatmapRow[] }
+interface HeatmapResponse { dates: string[]; users: HeatmapRow[]; }
 
 export function Heatmap() {
   const [range, setRange] = useState<Range>("90");
@@ -22,10 +20,11 @@ export function Heatmap() {
   const endDate = today.toISOString().slice(0, 10);
   const startDate = new Date(today.getTime() - parseInt(range) * 86_400_000).toISOString().slice(0, 10);
 
-  const { data, isLoading } = useQuery<HeatmapRow[]>({
+  const { data: payload, isLoading, error } = useQuery<HeatmapResponse>({
     queryKey: ["heatmap-range", startDate, endDate],
-    queryFn: () => api<HeatmapRow[]>(`/daily-updates/compliance-heatmap/range?startDate=${startDate}&endDate=${endDate}`),
+    queryFn: () => api<HeatmapResponse>(`/daily-updates/compliance-heatmap/range?startDate=${startDate}&endDate=${endDate}`),
   });
+  const data = payload?.users;
 
   const ROLE_HUE: Record<string, string> = useMemo(() => ({
     "Lead Developer": "secondary",
@@ -68,10 +67,16 @@ export function Heatmap() {
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => <div key={i} className="h-44 rounded-xl bg-surface-container animate-pulse" />)}
         </div>
+      ) : error ? (
+        <div className="rounded-xl border border-error/30 bg-error-container/30 p-6 text-sm text-on-error-container">
+          <p className="font-bold mb-1">Couldn't load the participation calendar.</p>
+          <p className="text-xs opacity-90">{(error as Error)?.message ?? "Unknown error"}</p>
+        </div>
       ) : !data || data.length === 0 ? (
         <div className="rounded-xl bg-surface-container border border-outline-variant/30 p-10 text-center">
           <Calendar className="mx-auto h-10 w-10 text-on-surface-variant mb-3" />
-          <p className="text-sm">No heatmap data available.</p>
+          <p className="text-sm">No participation data yet for this range.</p>
+          <p className="text-xs text-on-surface-variant mt-1">Once your team submits check-ins they'll appear here.</p>
         </div>
       ) : (
         <div className="space-y-4">
