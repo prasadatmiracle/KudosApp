@@ -7,18 +7,19 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
+// SCR-1 / Assessment-1: nav labels reframed for engagement, not surveillance.
 const ITEMS = [
-  { path: "/dashboard",    label: "Dashboard", icon: LayoutDashboard, mgr: false },
-  { path: "/health",       label: "Health",    icon: Activity,        mgr: true  },
-  { path: "/heatmap",      label: "Heatmap",   icon: CalendarDays,    mgr: true  },
+  { path: "/dashboard",    label: "Home",      icon: LayoutDashboard, mgr: false },
+  { path: "/health",       label: "Pulse",     icon: Activity,        mgr: true  },
+  { path: "/heatmap",      label: "Calendar",  icon: CalendarDays,    mgr: true  },   // was "Heatmap" → C1/C2
   { path: "/inbox",        label: "Inbox",     icon: Inbox,           mgr: false },
   { path: "/tasks",        label: "Tasks",     icon: ListChecks,      mgr: false },
-  { path: "/daily",        label: "Daily",     icon: PenLine,         mgr: false },
+  { path: "/daily",        label: "Check-in",  icon: PenLine,         mgr: false },   // was "Daily" → friendlier
   { path: "/feed",         label: "Feed",      icon: Rss,             mgr: false },
-  { path: "/achievements", label: "Awards",    icon: Trophy,          mgr: false },
+  { path: "/achievements", label: "Kudos",     icon: Trophy,          mgr: false },   // was "Awards"
   { path: "/events",       label: "Events",    icon: PartyPopper,     mgr: false },
-  { path: "/leaderboard",  label: "Ranks",     icon: BarChart3,       mgr: false },
-  { path: "/validation",   label: "Queue",     icon: CheckCircle2,    mgr: true  },
+  { path: "/leaderboard",  label: "Top 10",    icon: BarChart3,       mgr: false },   // implies aspirational, not ranking
+  { path: "/validation",   label: "Review",    icon: CheckCircle2,    mgr: true  },   // was "Queue"
   { path: "/reports",      label: "Reports",   icon: FileText,        mgr: false },
   { path: "/profile",      label: "Profile",   icon: User,            mgr: false },
 ] as const;

@@ -12,19 +12,28 @@ import { toast } from "sonner";
 interface DailyUpdate {
   dailyUpdateId: number;
   workDate: string;
-  ticketNo: string;
+  ticketNumber: string;
   description: string;
   status: string;
 }
 
-const STATUSES = ["Open", "InProgress", "Completed", "Blocked", "NoTask"] as const;
+// SCR-1 C5: FocusDay + Continuing added — replace stigma of "NoTask" with positive framing
+const STATUSES = ["Open", "InProgress", "Completed", "Blocked", "FocusDay", "Continuing"] as const;
 
+const STATUS_LABEL: Record<string, string> = {
+  Open: "Open", InProgress: "In progress", Completed: "Completed",
+  Blocked: "Need help", // softer copy per Assessment A3
+  FocusDay: "Focus day", Continuing: "Continuing",
+  NoTask: "Focus day",  // legacy server values mapped to neutral label
+};
 const STATUS_TONE: Record<string, string> = {
-  Completed:  "bg-success-container/40 text-on-success-container",
-  InProgress: "bg-tertiary-container/30 text-on-tertiary-container",
-  Blocked:    "bg-error-container/40   text-on-error-container",
+  Completed:  "bg-success-container/40   text-on-success-container",
+  InProgress: "bg-tertiary-container/30  text-on-tertiary-container",
+  Blocked:    "bg-error-container/40     text-on-error-container",
   Open:       "bg-surface-container-high text-on-surface-variant",
-  NoTask:     "bg-surface-container-high text-on-surface-variant",
+  FocusDay:   "bg-secondary-container/40 text-on-secondary-container", // SCR-1 C6 neutral colour
+  Continuing: "bg-primary/15             text-primary",                // SCR-1 C6 neutral colour
+  NoTask:     "bg-secondary-container/40 text-on-secondary-container",
 };
 
 export function Daily() {
@@ -53,7 +62,8 @@ export function Daily() {
   });
 
   const submit = useMutation({
-    mutationFn: (body: { ticketNo: string; description: string; status: string }) =>
+    // Backend DTO: { projectId, workDate, ticketNumber, description, status }
+    mutationFn: (body: { projectId: number; workDate: string; ticketNumber: string; description: string; status: string }) =>
       api("/daily-updates", { method: "POST", body }),
     onSuccess: () => {
       toast.success("Daily update submitted");
@@ -84,7 +94,15 @@ export function Daily() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    submit.mutate({ ticketNo, description, status });
+    // Default to first seeded project; backend persists user→project allocation
+    // via Master Data — picking projectId=1 is safe in dev seed.
+    submit.mutate({
+      projectId: 1,
+      workDate,
+      ticketNumber: ticketNo.trim(),
+      description: description.trim(),
+      status,
+    });
   }
 
   return (
@@ -154,23 +172,25 @@ export function Daily() {
                       : "border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
                   )}
                 >
-                  {s}
+                  {STATUS_LABEL[s]}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Ticket # */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Ticket #</label>
-            <Input
-              value={ticketNo}
-              onChange={(e) => setTicket(e.target.value)}
-              placeholder="e.g. ENG-1234"
-              className="bg-background border-outline-variant"
-              required
-            />
-          </div>
+          {/* Ticket # — hidden for FocusDay/Continuing per SCR-1 C6 */}
+          {status !== "FocusDay" && status !== "Continuing" && (
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Ticket #</label>
+              <Input
+                value={ticketNo}
+                onChange={(e) => setTicket(e.target.value)}
+                placeholder="e.g. ENG-1234"
+                className="bg-background border-outline-variant"
+                required
+              />
+            </div>
+          )}
 
           {/* Description */}
           <div className="space-y-2">
@@ -236,9 +256,9 @@ export function Daily() {
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-bold text-sm truncate">{u.ticketNo}</p>
+                      <p className="font-bold text-sm truncate">{u.ticketNumber}</p>
                       <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full", STATUS_TONE[u.status])}>
-                        {u.status}
+                        {STATUS_LABEL[u.status] ?? u.status}
                       </span>
                     </div>
                     <p className="text-sm text-on-surface-variant mt-1">{u.description}</p>

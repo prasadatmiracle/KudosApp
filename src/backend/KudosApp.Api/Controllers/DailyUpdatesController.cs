@@ -24,23 +24,37 @@ public sealed class DailyUpdatesController(
         var userId = User.CurrentUserId();
         if (input.WorkDate == default) return BadRequest("WorkDate is required.");
         if (input.ProjectId <= 0) return BadRequest("ProjectId is required.");
-        if (input.Status != DailyStatus.NoTask && string.IsNullOrWhiteSpace(input.TicketNumber))
-            return BadRequest("TicketNumber is required for non no-task updates.");
+        // SCR-1 C6 (Assessment A1): FocusDay and Continuing don't require a
+        // ticket number. NoTask is kept for backward compatibility.
+        var isNoTicketStatus = input.Status is DailyStatus.NoTask
+                                              or DailyStatus.FocusDay
+                                              or DailyStatus.Continuing;
+        if (!isNoTicketStatus && string.IsNullOrWhiteSpace(input.TicketNumber))
+            return BadRequest("TicketNumber is required when there is active ticket work.");
 
         var duplicate = db.DailyUpdates.Any(x =>
             x.UserId == userId &&
             x.WorkDate == input.WorkDate &&
             x.TicketNumber == input.TicketNumber);
 
-        if (duplicate && input.Status != DailyStatus.NoTask)
+        if (duplicate && !isNoTicketStatus)
             return Conflict("Duplicate ticket/day update for the same user.");
+
+        // Synthetic ticket numbers so the column stays non-null and unique-per-day.
+        string syntheticTicket = input.Status switch
+        {
+            DailyStatus.NoTask     => "NO-TASK",
+            DailyStatus.FocusDay   => $"FOCUS-{input.WorkDate:yyyyMMdd}",
+            DailyStatus.Continuing => $"CONTINUING-{input.WorkDate:yyyyMMdd}",
+            _ => input.TicketNumber.Trim()
+        };
 
         var created = new DailyUpdate
         {
             UserId = userId,
             ProjectId = input.ProjectId,
             WorkDate = input.WorkDate,
-            TicketNumber = input.Status == DailyStatus.NoTask ? "NO-TASK" : input.TicketNumber.Trim(),
+            TicketNumber = syntheticTicket,
             Description = input.Description.Trim(),
             Status = input.Status,
             CreatedAtUtc = DateTime.UtcNow

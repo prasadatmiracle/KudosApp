@@ -70,8 +70,8 @@ export function Validation() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Validation Queue</h1>
-        <p className="text-sm text-on-surface-variant mt-1">Review and approve pending achievements and sales targets.</p>
+        <h1 className="text-2xl font-bold tracking-tight">Recognitions to review</h1>
+        <p className="text-sm text-on-surface-variant mt-1">Celebrate your team's wins — approve achievements and confirm sales updates.</p>
       </div>
 
       {/* Filter tabs */}
