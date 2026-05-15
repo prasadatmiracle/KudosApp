@@ -85,6 +85,41 @@ need to land in `requirements.md` to keep the spec in sync with reality.
 
 ---
 
+## P3a — "Generate" button action plan (context-aware AI)
+
+The top-right **Generate** button is now route-aware: it only renders on
+pages with a wired action, and shows a context-specific label. Phase 1
+ships informational toasts so the affordance is discoverable; phases 2–3
+wire real backend flows.
+
+| Page | Generate action | Status | Backend endpoint |
+|------|----------------|--------|------------------|
+| `/reports`      | "Generate report" — period picker + draft creation | 🟡 Stub toast | `POST /api/reports/{weekly\|monthly\|quarterly}/generate` (exists; need UI picker) |
+| `/feed`         | "AI weekly summary" — narrative of last 7 days team activity | 🟡 Stub toast | Generalise `GET /api/reports/{id}/narrative` to a team-feed variant |
+| `/daily`        | "Draft from inbox" — AI-fill from confirmed inbox tasks    | 🟡 Stub toast | **New:** `POST /api/daily-updates/draft-from-inbox` |
+| `/validation`   | "Suggest auto-approvals" — flag low-risk items             | 🔴 Pending     | **New:** `GET /api/validations/suggestions` |
+| `/achievements` | "Draft from recent work"                                   | 🔴 Pending     | **New:** `GET /api/achievements/draft-suggestions` |
+| `/inbox`        | "Re-run extraction" — manual ingest refresh                | 🔴 Pending     | `POST /api/inbox-tasks/ingest/mail` |
+| `/health`       | "Send team digest"                                         | 🔴 Pending     | `ZohoBridge.SendCliqNotificationAsync` |
+| All others (Profile, Calendar, Events, Tasks, Leaderboard) | Hidden | 🟢 Done | n/a |
+
+---
+
+## P3b — Bottom nav overflow
+
+Bottom dock previously held 13 items in a horizontal scroller (overwhelming).
+Now: **4 primary tabs + More button** that opens a slide-up sheet with the
+rest. Primary stays consistent across roles; role-specific items live under
+More with a "Manager" pill.
+
+| Primary tabs (always)  | Under More (employee)              | Under More (manager — adds these) |
+|------------------------|------------------------------------|-----------------------------------|
+| Home · Check-in · Feed · Profile | Inbox · Tasks · Kudos · Events · Top 10 · Reports | + Pulse · Calendar · Review |
+
+Implemented in `BottomNav.tsx`. Sheet dismisses on route change, ESC, or backdrop click. Active overflow page highlights the More button itself.
+
+---
+
 ## P4 — Stitch v2 designs not yet applied
 
 These designs were in `stitch_kudosapp_ui_design_reference (1).zip`:

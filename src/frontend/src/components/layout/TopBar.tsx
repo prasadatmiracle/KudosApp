@@ -1,6 +1,7 @@
-import { LogOut, Sparkles } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { GenerateButton } from "@/components/layout/GenerateButton";
 import { useAuth } from "@/lib/auth";
 import { initials } from "@/lib/utils";
 
@@ -25,10 +26,7 @@ export function TopBar({ title }: { title: string }) {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-grad-primary text-on-primary px-3.5 py-1.5 text-xs font-semibold shadow-glow hover:opacity-95 transition active:scale-95">
-            <Sparkles className="h-3.5 w-3.5" />
-            Generate
-          </button>
+          <GenerateButton />
           <ThemeToggle />
           <button
             onClick={logout}
