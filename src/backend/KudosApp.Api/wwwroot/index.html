@@ -2,12 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>KudosApp</title>
 
-    <!-- PWA manifest + theme -->
+    <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#17324A" />
+    <meta name="theme-color" content="#4f46e5" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -15,55 +15,185 @@
     <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
 
+    <!-- Inter Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind CSS CDN v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            },
+            colors: {
+              brand: {
+                50:  '#eef2ff',
+                100: '#e0e7ff',
+                200: '#c7d2fe',
+                300: '#a5b4fc',
+                400: '#818cf8',
+                500: '#6366f1',
+                600: '#4f46e5',
+                700: '#4338ca',
+                800: '#3730a3',
+                900: '#312e81',
+              },
+              accent: {
+                500: '#8b5cf6',
+                600: '#7c3aed',
+              }
+            },
+            boxShadow: {
+              'soft':     '0 2px 4px -1px rgb(0 0 0 / .06), 0 1px 2px -1px rgb(0 0 0 / .04)',
+              'soft-lg':  '0 10px 30px -10px rgb(79 70 229 / .25)',
+              'glow':     '0 0 0 3px rgb(79 70 229 / .15)',
+              'glow-md':  '0 8px 24px -8px rgb(79 70 229 / .40)',
+            },
+            backgroundImage: {
+              'grad-brand': 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              'grad-topbar': 'linear-gradient(120deg, #312e81 0%, #4f46e5 45%, #7c3aed 100%)',
+              'grad-card':   'linear-gradient(135deg, #ffffff 0%, #fafbff 100%)',
+              'mesh':        'radial-gradient(at 0% 0%, rgb(79 70 229 / .12) 0px, transparent 50%), radial-gradient(at 100% 100%, rgb(124 58 237 / .10) 0px, transparent 50%)',
+            },
+            keyframes: {
+              shimmer: { '100%': { transform: 'translateX(100%)' } },
+              'fade-in': { '0%': { opacity: 0, transform: 'translateY(4px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+            },
+            animation: {
+              shimmer: 'shimmer 1.8s infinite',
+              'fade-in': 'fade-in .25s ease-out',
+            },
+          }
+        }
+      }
+    </script>
+
+    <!-- Lucide Icons (SVG via JS) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+    <!-- App styles -->
     <link rel="stylesheet" href="/app.css" />
+
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   </head>
-  <body>
-    <div id="loginView" class="center-wrap">
-      <form id="loginForm" class="card login-card">
-        <h1>Kudos App</h1>
-        <p>Mobile-first team engagement platform</p>
-        <label>
-          Email
-          <input id="loginEmail" type="email" value="employee@kudos.local" required />
-        </label>
-        <label>
-          Zoho Access Token
-          <input id="loginToken" type="text" value="demo-token" required />
-        </label>
-        <button type="submit">Sign in</button>
-        <div id="loginError" class="error hidden"></div>
-      </form>
+  <body class="font-sans bg-slate-50 text-slate-900 antialiased">
+    <!-- ───────────────── Login ───────────────── -->
+    <div id="loginView" class="min-h-screen grid lg:grid-cols-2 bg-mesh">
+      <!-- Brand side -->
+      <div class="hidden lg:flex flex-col justify-between p-12 bg-grad-topbar text-white relative overflow-hidden">
+        <div class="absolute inset-0 opacity-20">
+          <div class="absolute top-10 right-20 w-72 h-72 bg-white/20 rounded-full blur-3xl"></div>
+          <div class="absolute bottom-20 left-20 w-96 h-96 bg-violet-300/20 rounded-full blur-3xl"></div>
+        </div>
+        <div class="relative">
+          <div class="flex items-center gap-3 mb-12">
+            <div class="w-10 h-10 rounded-xl bg-white/15 backdrop-blur grid place-items-center">
+              <i data-lucide="award" class="w-5 h-5"></i>
+            </div>
+            <span class="text-xl font-bold tracking-tight">KudosApp</span>
+          </div>
+          <h2 class="text-4xl font-bold leading-tight mb-4">Recognize.<br/>Reflect. Report.</h2>
+          <p class="text-white/80 text-lg max-w-md">Mobile-first team intelligence — turn daily updates into weekly insight automatically.</p>
+        </div>
+        <div class="relative space-y-3 text-sm">
+          <div class="flex items-center gap-3 text-white/90"><i data-lucide="zap" class="w-4 h-4"></i>Daily updates in under 15 seconds</div>
+          <div class="flex items-center gap-3 text-white/90"><i data-lucide="trending-up" class="w-4 h-4"></i>Auto-generated weekly reports</div>
+          <div class="flex items-center gap-3 text-white/90"><i data-lucide="bell" class="w-4 h-4"></i>Zoho Cliq notifications built in</div>
+        </div>
+      </div>
+      <!-- Form side -->
+      <div class="flex items-center justify-center p-6">
+        <form id="loginForm" class="w-full max-w-sm space-y-5">
+          <div class="lg:hidden flex items-center gap-2 mb-6">
+            <div class="w-9 h-9 rounded-xl bg-grad-brand grid place-items-center text-white shadow-soft-lg">
+              <i data-lucide="award" class="w-4 h-4"></i>
+            </div>
+            <span class="text-lg font-bold tracking-tight">KudosApp</span>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight">Welcome back</h1>
+            <p class="text-sm text-slate-500 mt-1">Sign in with your Zoho account to continue.</p>
+          </div>
+          <label class="block">
+            <span class="text-sm font-semibold text-slate-700">Email</span>
+            <input id="loginEmail" type="email" value="manager@kudos.local" required
+              class="mt-1.5 w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition text-sm bg-white" />
+          </label>
+          <label class="block">
+            <span class="text-sm font-semibold text-slate-700">Zoho Access Token</span>
+            <input id="loginToken" type="text" value="demo-token" required
+              class="mt-1.5 w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition text-sm bg-white" />
+          </label>
+          <button type="submit"
+            class="w-full py-2.5 rounded-lg bg-grad-brand text-white font-semibold shadow-soft-lg hover:shadow-glow-md transition-shadow text-sm">
+            Sign in
+          </button>
+          <div id="loginError" class="hidden mt-2 rounded-lg px-3 py-2 bg-red-50 text-red-700 text-sm border-l-2 border-red-500"></div>
+          <p class="text-xs text-slate-400 text-center pt-2">Demo accounts: manager@kudos.local · employee@kudos.local · hr@kudos.local</p>
+        </form>
+      </div>
     </div>
 
-    <div id="appView" class="hidden">
-      <header class="topbar">
-        <h2 id="viewTitle">Dashboard</h2>
-        <button id="logoutBtn" class="secondary">Logout</button>
+    <!-- ───────────────── App Shell ───────────────── -->
+    <div id="appView" class="hidden min-h-screen bg-slate-50">
+      <!-- Topbar -->
+      <header class="sticky top-0 z-40 bg-grad-topbar text-white shadow-glow-md">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-white/15 backdrop-blur grid place-items-center">
+              <i data-lucide="award" class="w-4 h-4"></i>
+            </div>
+            <h2 id="viewTitle" class="text-base font-semibold tracking-tight">Dashboard</h2>
+          </div>
+          <button id="logoutBtn"
+            class="text-xs font-medium px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur transition flex items-center gap-1.5">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Logout</span>
+          </button>
+        </div>
       </header>
 
-      <main id="content" class="content"></main>
+      <main id="content" class="max-w-3xl mx-auto px-4 py-5 pb-28"></main>
 
-      <nav class="bottom-nav">
-        <button data-view="dashboard">Dashboard</button>
-        <button data-view="health" data-role-min="Manager" class="mgr-only">Team Health <span id="nudgeBadge" class="nudge-badge hidden">0</span></button>
-        <button data-view="heatmap" data-role-min="Manager" class="mgr-only">Heatmap</button>
-        <button data-view="inbox">Inbox <span id="inboxBadge" class="nudge-badge hidden">0</span></button>
-        <button data-view="tasks">Tasks</button>
-        <button data-view="daily">Daily</button>
-        <button data-view="feed">Feed</button>
-        <button data-view="achievements">Achievements</button>
-        <button data-view="events">Events</button>
-        <button data-view="leaderboard">Leaderboard</button>
-        <button data-view="validation">Validation</button>
-        <button data-view="reports">Reports</button>
-        <button data-view="profile">Profile</button>
+      <!-- Bottom Nav -->
+      <nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 shadow-[0_-4px_24px_-8px_rgba(0,0,0,0.08)]">
+        <div class="max-w-3xl mx-auto px-2 py-2 flex gap-1 overflow-x-auto scrollbar-hide" style="-ms-overflow-style:none;scrollbar-width:none">
+          <button data-view="dashboard"     class="navbtn"><i data-lucide="layout-dashboard" class="w-4 h-4"></i><span>Dashboard</span></button>
+          <button data-view="health"        class="navbtn mgr-only" data-role-min="Manager"><i data-lucide="activity" class="w-4 h-4"></i><span>Health</span><span id="nudgeBadge" class="hidden ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white">0</span></button>
+          <button data-view="heatmap"       class="navbtn mgr-only" data-role-min="Manager"><i data-lucide="calendar-days" class="w-4 h-4"></i><span>Heatmap</span></button>
+          <button data-view="inbox"         class="navbtn"><i data-lucide="inbox" class="w-4 h-4"></i><span>Inbox</span><span id="inboxBadge" class="hidden ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white">0</span></button>
+          <button data-view="tasks"         class="navbtn"><i data-lucide="list-checks" class="w-4 h-4"></i><span>Tasks</span></button>
+          <button data-view="daily"         class="navbtn"><i data-lucide="pen-line" class="w-4 h-4"></i><span>Daily</span></button>
+          <button data-view="feed"          class="navbtn"><i data-lucide="rss" class="w-4 h-4"></i><span>Feed</span></button>
+          <button data-view="achievements"  class="navbtn"><i data-lucide="trophy" class="w-4 h-4"></i><span>Awards</span></button>
+          <button data-view="events"        class="navbtn"><i data-lucide="party-popper" class="w-4 h-4"></i><span>Events</span></button>
+          <button data-view="leaderboard"   class="navbtn"><i data-lucide="bar-chart-3" class="w-4 h-4"></i><span>Ranks</span></button>
+          <button data-view="validation"    class="navbtn"><i data-lucide="check-circle-2" class="w-4 h-4"></i><span>Approve</span></button>
+          <button data-view="reports"       class="navbtn"><i data-lucide="file-text" class="w-4 h-4"></i><span>Reports</span></button>
+          <button data-view="profile"       class="navbtn"><i data-lucide="user" class="w-4 h-4"></i><span>Profile</span></button>
+        </div>
       </nav>
     </div>
 
     <script src="/app.js"></script>
+    <script>
+      // Render Lucide icons on every paint
+      (function () {
+        const origCreate = window.lucide && window.lucide.createIcons;
+        if (origCreate) lucide.createIcons();
+        // Re-render after DOM mutations (debounced)
+        let pending;
+        const obs = new MutationObserver(() => {
+          clearTimeout(pending);
+          pending = setTimeout(() => window.lucide && lucide.createIcons(), 30);
+        });
+        obs.observe(document.body, { childList: true, subtree: true });
+      })();
+    </script>
   </body>
 </html>

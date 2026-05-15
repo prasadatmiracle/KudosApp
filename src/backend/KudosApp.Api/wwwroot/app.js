@@ -101,7 +101,7 @@
   }
 
   function setNavActive() {
-    document.querySelectorAll(".bottom-nav button").forEach((btn) => {
+    document.querySelectorAll(".navbtn").forEach((btn) => {
       const isActive = btn.dataset.view === state.view;
       btn.classList.toggle("active", isActive);
       if (btn.classList.contains("mgr-only")) {
@@ -111,6 +111,8 @@
         btn.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
       }
     });
+    // Re-render Lucide icons in case nav was just shown
+    if (window.lucide) window.lucide.createIcons();
   }
 
   function navigate(view) {
@@ -334,12 +336,13 @@
   }
 
   const FEED_ICONS = {
-    Achievement: "🏆", Event: "🎉", DailyUpdate: "📋",
-    SalesEnquiry: "💼", Meeting: "🤝", Task: "✅"
+    Achievement: "trophy", Event: "party-popper", DailyUpdate: "clipboard-list",
+    SalesEnquiry: "briefcase", Meeting: "users", Task: "check-circle-2"
   };
 
   function feedCard(item) {
-    const icon = FEED_ICONS[item.kind] || "📌";
+    const iconName = FEED_ICONS[item.kind] || "circle";
+    const icon = `<i data-lucide="${iconName}"></i>`;
     const when = item.createdAtUtc
       ? new Date(item.createdAtUtc).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
       : "";
@@ -409,7 +412,7 @@
         return;
       }
 
-      const TYPE_ICON = { Achievement: "🏆", SalesEnquiry: "💼" };
+      const TYPE_ICON = { Achievement: "trophy", SalesEnquiry: "briefcase" };
       content.innerHTML = `
         <div class="stack">
           <div class="section-title">${rows.length} pending validation${rows.length !== 1 ? "s" : ""}</div>
@@ -417,7 +420,7 @@
             <section class="card stack" data-validation-card="${row.validationRecordId}">
               <div class="between">
                 <div style="display:flex;gap:8px;align-items:center">
-                  <span style="font-size:20px">${TYPE_ICON[row.entityType] || "📌"}</span>
+                  <span class="feed-icon" style="width:36px;height:36px"><i data-lucide="${TYPE_ICON[row.entityType] || "circle"}"></i></span>
                   <div>
                     <strong>${escapeHtml(row.title)}</strong>
                     <div class="small muted">${escapeHtml(row.category)}${row.userName ? ` · ${escapeHtml(row.userName)}` : ""}</div>
@@ -1236,6 +1239,10 @@
 
   async function paintView() {
     setNavActive();
+    content.classList.remove("content-enter");
+    // force reflow then re-add for animation restart
+    void content.offsetWidth;
+    content.classList.add("content-enter");
     const titles = {
       dashboard: "Dashboard",
       health:    "Team Health",
