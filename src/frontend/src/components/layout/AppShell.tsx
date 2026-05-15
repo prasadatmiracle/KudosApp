@@ -3,18 +3,21 @@ import { TopBar } from "./TopBar";
 import { BottomNav } from "./BottomNav";
 import { useAuth } from "@/lib/auth";
 
+// SCR-1 + Assessment-1: titles reframed from surveillance ("Compliance",
+// "Validation Queue") to engagement-oriented language. Same data, softer
+// psychological framing per Assessment A5/A7.
 const TITLES: Record<string, string> = {
   "/dashboard":    "Overview",
-  "/health":       "Team Health",
-  "/heatmap":      "Participation Calendar",
-  "/inbox":        "Smart Inbox",
-  "/tasks":        "Tasks & Polls",
-  "/daily":        "Daily Update",
-  "/feed":         "Activity Feed",
+  "/health":       "Team pulse",
+  "/heatmap":      "Participation calendar",   // was "Compliance Heatmap" — SCR-1 C2
+  "/inbox":        "Smart inbox",
+  "/tasks":        "Tasks & polls",
+  "/daily":        "Daily check-in",            // softer than "Daily Update"
+  "/feed":         "Activity feed",
   "/achievements": "Achievements",
-  "/events":       "Events",
-  "/leaderboard":  "Leaderboard",
-  "/validation":   "Validation Queue",
+  "/events":       "Team events",
+  "/leaderboard":  "Recognition",               // less competitive than "Leaderboard"
+  "/validation":   "Recognitions to review",    // softer than "Validation Queue"
   "/reports":      "Reports",
   "/profile":      "Profile",
 };

@@ -16,7 +16,8 @@ import { Heatmap } from "@/pages/Heatmap";
 import { InboxPage } from "@/pages/InboxPage";
 import { Validation } from "@/pages/Validation";
 import { Reports } from "@/pages/Reports";
-import { Tasks, Events } from "@/pages/Stubs";
+import { Tasks } from "@/pages/Tasks";
+import { Events } from "@/pages/Events";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } },

@@ -43,7 +43,11 @@ public enum DailyStatus
     InProgress,
     Completed,
     Blocked,
-    NoTask
+    NoTask,
+    // SCR-1 C5/C6: intentional focused work (A1 — replaces NoTask stigma)
+    FocusDay,
+    // SCR-1 C5/C6: continuing yesterday's ticket — no re-submission needed
+    Continuing
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]

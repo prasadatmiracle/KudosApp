@@ -105,16 +105,18 @@ export function Heatmap() {
       )}
 
       {/* Legend */}
-      <div className="flex items-center gap-3 flex-wrap text-[10px] text-on-surface-variant pt-2">
-        <span className="font-bold uppercase tracking-wider">Less</span>
-        {[0.2, 0.4, 0.6, 0.8, 1.0].map((opacity, i) => (
-          <span
-            key={i}
-            className="h-3.5 w-3.5 rounded-sm"
-            style={{ background: `hsl(var(--primary) / ${opacity})` }}
-          />
-        ))}
-        <span className="font-bold uppercase tracking-wider">More</span>
+      <div className="flex items-center gap-4 flex-wrap text-[10px] text-on-surface-variant pt-2">
+        <div className="flex items-center gap-2">
+          <span className="font-bold uppercase tracking-wider">Less</span>
+          {[0.2, 0.4, 0.6, 0.8, 1.0].map((opacity, i) => (
+            <span key={i} className="h-3.5 w-3.5 rounded-sm" style={{ background: `hsl(var(--primary) / ${opacity})` }} />
+          ))}
+          <span className="font-bold uppercase tracking-wider">More</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-3.5 w-3.5 rounded-sm" style={{ background: "hsl(var(--outline-variant) / 0.6)" }} />
+          <span>Focus day</span>
+        </div>
       </div>
     </div>
   );
@@ -129,16 +131,20 @@ function CellGrid({ days, role }: { days: HeatmapDay[]; role: string }) {
         const colorVar = role === "primary" ? "--primary"
                        : role === "tertiary" ? "--tertiary"
                        : "--secondary";
+        // SCR-1 C6 / Assessment A1: FocusDay + Continuing render in a neutral
+        // tone — not punitive red, not bright "completed" green.
+        const isFocus = d.status === "FocusDay" || d.status === "Continuing" || d.status === "NoTask";
+        let background: string;
+        if (isFocus)            background = "hsl(var(--outline-variant) / 0.6)";
+        else if (d.submitted)   background = `hsl(var(${colorVar}) / ${d.status === "Blocked" ? 0.55 : 0.9})`;
+        else                    background = "hsl(var(--surface-container-high))";
+        const title = `${d.date}${d.submitted ? ` · ${d.status ?? "submitted"}` : " · no entry"}`;
         return (
           <div
             key={i}
-            title={`${d.date}${d.submitted ? " · submitted" : " · missed"}`}
+            title={title}
             className="h-3.5 w-3.5 rounded-sm transition-transform hover:scale-150 hover:z-10 relative"
-            style={{
-              background: d.submitted
-                ? `hsl(var(${colorVar}) / ${d.status === "Blocked" ? 0.5 : 0.9})`
-                : "hsl(var(--surface-container-high))",
-            }}
+            style={{ background }}
           />
         );
       })}
