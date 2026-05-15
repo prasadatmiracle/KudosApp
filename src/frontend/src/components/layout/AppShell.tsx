@@ -4,9 +4,9 @@ import { BottomNav } from "./BottomNav";
 import { useAuth } from "@/lib/auth";
 
 const TITLES: Record<string, string> = {
-  "/dashboard":    "Dashboard",
+  "/dashboard":    "Overview",
   "/health":       "Team Health",
-  "/heatmap":      "Compliance Heatmap",
+  "/heatmap":      "Participation Calendar",
   "/inbox":        "Smart Inbox",
   "/tasks":        "Tasks & Polls",
   "/daily":        "Daily Update",
@@ -28,9 +28,9 @@ export function AppShell() {
   const title = TITLES[pathname] ?? "KudosApp";
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="min-h-dvh bg-background text-on-surface">
       <TopBar title={title} />
-      <main className="mx-auto max-w-3xl px-4 py-5 pb-28 animate-fade-in">
+      <main className="mx-auto max-w-3xl px-4 pt-20 pb-32 animate-fade-in">
         <Outlet />
       </main>
       <BottomNav />

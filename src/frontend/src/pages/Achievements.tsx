@@ -117,11 +117,11 @@ export function Achievements() {
       </Card>
 
       <section>
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Recent submissions</h3>
+        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Recent submissions</h3>
         {isLoading ? (
           <div className="space-y-2"><Skeleton className="h-20 rounded-xl" /><Skeleton className="h-20 rounded-xl" /></div>
         ) : !data || data.length === 0 ? (
-          <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">No achievements posted yet.</CardContent></Card>
+          <Card><CardContent className="p-8 text-center text-sm text-on-surface-variant">No achievements posted yet.</CardContent></Card>
         ) : (
           <div className="space-y-2">
             {data.map((a) => (
@@ -137,8 +137,8 @@ export function Achievements() {
                         {a.validationStatus}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">{a.description}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <p className="text-sm text-on-surface-variant mt-1">{a.description}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-on-surface-variant">
                       <Badge variant="outline" className="text-[10px]">{a.category}</Badge>
                       {a.authorName && <span>{a.authorName}</span>}
                       <span>{fmtDate(a.createdAtUtc, "long")}</span>

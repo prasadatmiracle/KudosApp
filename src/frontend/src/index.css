@@ -2,66 +2,123 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────────
+   Material 3 theme tokens (matching Stitch palette exactly)
+   Light = "High-Performance Productivity"
+   Dark  = "Kudos / Midnight Studio"
+   Values stored as raw HSL triplets so Tailwind's <alpha-value> works.
+   ───────────────────────────────────────────────────────────────── */
+
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 243 75% 59%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 258 90% 66%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --success: 160 84% 39%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 243 75% 59%;
-    --radius: 0.75rem;
+    /* Light theme */
+    --background:                280  46% 98%;   /* #fdf7ff */
+    --on-background:              280   6% 11%;
+    --surface:                    280  46% 98%;
+    --surface-variant:            280  10% 90%;
+    --on-surface:                 280   6% 11%;  /* #1d1b20 */
+    --on-surface-variant:         260   8% 30%;
+    --surface-container-lowest:     0   0% 100%;
+    --surface-container-low:      280  29% 96%;
+    --surface-container:          280  16% 94%;
+    --surface-container-high:     280  10% 92%;
+    --surface-container-highest:  280   8% 90%;
+
+    --primary:                    258  44% 38%;  /* #4f378a */
+    --on-primary:                   0   0% 100%;
+    --primary-container:          258  35% 48%;
+    --on-primary-container:       258  73% 91%;
+    --secondary:                  258  16% 42%;
+    --on-secondary:                 0   0% 100%;
+    --secondary-container:        260  90% 91%;
+    --on-secondary-container:     258  15% 42%;
+    --tertiary:                    44 100% 23%;
+    --on-tertiary:                  0   0% 100%;
+    --tertiary-container:          45  56% 55%;
+    --on-tertiary-container:       44 100% 16%;
+
+    --error:                        0  77% 42%;
+    --on-error:                     0   0% 100%;
+    --error-container:              5 100% 92%;
+    --on-error-container:           0 100% 29%;
+    --success:                    160  84% 33%;
+    --on-success:                   0   0% 100%;
+    --success-container:          152  76% 90%;
+    --on-success-container:       160  84% 18%;
+
+    --outline:                    258   5% 49%;
+    --outline-variant:            263  13% 80%;
+
+    /* Brand gradient endpoints (per Stitch: Indigo → Violet) */
+    --grad-from:                  243  75% 59%;  /* #4f46e5 */
+    --grad-to:                    258  90% 66%;  /* #7c3aed */
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 243 75% 65%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 258 90% 66%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 243 75% 65%;
+    /* Dark theme — matches Stitch "Kudos" dark exactly */
+    --background:                 230  20%   9%;  /* #121319 */
+    --on-background:              253  19%  90%;  /* #e4e1eb */
+    --surface:                    230  20%   9%;
+    --surface-variant:             240   6%  22%;
+    --on-surface:                 253  19%  90%;
+    --on-surface-variant:         247  17%  81%;  /* #c6c5d5 */
+    --surface-container-lowest:   232  21%   6%;  /* #0d0e14 */
+    --surface-container-low:      240  13%  12%;  /* #1b1b22 */
+    --surface-container:          240  11%  14%;  /* #1f1f26 */
+    --surface-container-high:     240   9%  17%;  /* #292930 */
+    --surface-container-highest:  240   6%  22%;  /* #34343b */
+
+    --primary:                    234 100%  87%;  /* #bdc2ff */
+    --on-primary:                 234  76%  31%;
+    --primary-container:          235 100%  74%;  /* #818cf8 */
+    --on-primary-container:       235  79%  30%;
+    --secondary:                  258 100%  87%;  /* #cebdff */
+    --on-secondary:               265 100%  29%;
+    --secondary-container:        262  53%  40%;  /* #4f319c */
+    --on-secondary-container:     257 100%  83%;
+    --tertiary:                    43  93%  60%;  /* #f7bd3e */
+    --on-tertiary:                 43 100%  13%;
+    --tertiary-container:          42 100%  38%;  /* #c08d00 */
+    --on-tertiary-container:       42 100%  21%;
+
+    --error:                        4 100%  84%;
+    --on-error:                     0 100%  21%;
+    --error-container:              0 100%  29%;
+    --on-error-container:           5 100%  92%;
+    --success:                    156  73%  67%;
+    --on-success:                 160  84%  10%;
+    --success-container:          161  60%  20%;
+    --on-success-container:       152  76%  90%;
+
+    --outline:                    248   6%  59%;  /* #908f9e */
+    --outline-variant:            232  10%  30%;  /* #454653 */
+
+    /* Brand gradient endpoints — brighter in dark mode */
+    --grad-from:                  235 100%  74%;  /* #818cf8 */
+    --grad-to:                    258 100%  76%;  /* #a78bfa */
   }
 }
 
 @layer base {
-  * { @apply border-border; }
+  * { @apply border-outline-variant/50; }
+  html { scroll-behavior: smooth; }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-on-surface font-sans antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  html { scroll-behavior: smooth; }
 }
 
-/* Hide scrollbar for nav */
+/* Hide scrollbar */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Match Stitch glass panel */
+.glass-panel {
+  @apply bg-surface-container-low/90 backdrop-blur-xl border border-outline-variant/30;
+}
+
+/* Smooth theme transitions on key surfaces */
+html.theme-ready body,
+html.theme-ready .surface-transition {
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+}

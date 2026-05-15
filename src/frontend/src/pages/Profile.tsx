@@ -55,14 +55,14 @@ export function Profile() {
               <CardContent className="p-4">
                 <Sparkles className="h-5 w-5 text-primary" />
                 <p className="mt-3 text-2xl font-bold tracking-tight">{perf?.points ?? 0}</p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Points this month</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">Points this month</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-violet-500/10 to-violet-500/5 border-violet-500/20">
               <CardContent className="p-4">
                 <Trophy className="h-5 w-5 text-violet-600" />
                 <p className="mt-3 text-2xl font-bold tracking-tight text-violet-600">{perf?.badges.length ?? 0}</p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Badges earned</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">Badges earned</p>
               </CardContent>
             </Card>
           </>
@@ -72,7 +72,7 @@ export function Profile() {
       {/* Badges */}
       {perf && perf.badges.length > 0 && (
         <section>
-          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Badges</h3>
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Badges</h3>
           <div className="flex flex-wrap gap-2">
             {perf.badges.map((b) => <Badge key={b} variant="violet">{b}</Badge>)}
           </div>
@@ -82,7 +82,7 @@ export function Profile() {
       {/* Recent achievements */}
       {ach && ach.length > 0 && (
         <section>
-          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Recent achievements</h3>
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Recent achievements</h3>
           <div className="space-y-2">
             {ach.map((a) => (
               <Card key={a.achievementId}>
@@ -92,7 +92,7 @@ export function Profile() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{a.title}</p>
-                    <p className="text-xs text-muted-foreground">{a.category} · {fmtDate(a.createdAtUtc, "long")}</p>
+                    <p className="text-xs text-on-surface-variant">{a.category} · {fmtDate(a.createdAtUtc, "long")}</p>
                   </div>
                   <Badge variant={a.validationStatus === "Approved" ? "success" : a.validationStatus === "Rejected" ? "destructive" : "warning"}>
                     {a.validationStatus}
